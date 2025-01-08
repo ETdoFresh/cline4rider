@@ -3,28 +3,15 @@ package com.cline.ui
 import com.cline.model.ClineMessage
 import com.cline.ui.model.ChatViewModel
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.wm.ToolWindow
-import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.content.ContentFactory
 import java.awt.BorderLayout
 import java.awt.event.KeyEvent
 import java.awt.event.KeyListener
 import javax.swing.JPanel
 import javax.swing.JTextArea
 
-class ClineToolWindowFactory : ToolWindowFactory {
-    override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        val clineToolWindow = ClineToolWindow(project)
-        val contentFactory = ContentFactory.getInstance()
-        val content = contentFactory.createContent(clineToolWindow.getContent(), "", false)
-        toolWindow.contentManager.addContent(content)
-    }
-}
-
-class ClineToolWindow(private val project: Project) {
+class ClineToolWindow(private val project: Project) : JPanel(BorderLayout()) {
     private val viewModel = ChatViewModel(project)
-    private val mainPanel = JPanel(BorderLayout())
     private val chatArea = JTextArea().apply {
         isEditable = false
         lineWrap = true
@@ -42,10 +29,10 @@ class ClineToolWindow(private val project: Project) {
 
     private fun setupUI() {
         // Add chat display area
-        mainPanel.add(JBScrollPane(chatArea), BorderLayout.CENTER)
+        add(JBScrollPane(chatArea), BorderLayout.CENTER)
         
         // Add input area
-        mainPanel.add(JBScrollPane(inputArea), BorderLayout.SOUTH)
+        add(JBScrollPane(inputArea), BorderLayout.SOUTH)
     }
 
     private fun setupListeners() {
@@ -84,5 +71,5 @@ class ClineToolWindow(private val project: Project) {
         chatArea.caretPosition = chatArea.document.length
     }
 
-    fun getContent() = mainPanel
+    fun getContent() = this
 }

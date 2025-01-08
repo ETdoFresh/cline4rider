@@ -1,6 +1,7 @@
 package com.cline
 
 import com.intellij.util.messages.Topic
+import com.cline.model.ClineMessage
 
 object ClineTopics {
     val CLINE_MESSAGES = Topic.create(
