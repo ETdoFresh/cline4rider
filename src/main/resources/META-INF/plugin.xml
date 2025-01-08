@@ -1,0 +1,20 @@
+<idea-plugin>
+    <id>com.cline.rider</id>
+    <name>Cline for Rider</name>
+    <version>1.0.0</version>
+    <vendor email="support@cline.com" url="https://cline.com">Cline</vendor>
+
+    <description><![CDATA[
+    Cline AI assistant integration for JetBrains Rider.
+    ]]></description>
+
+    <depends>com.intellij.modules.rider</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationService serviceImplementation="com.cline.MainApplicationComponent"/>
+    </extensions>
+
+    <actions>
+        <!-- Actions will be added in Phase 2 -->
+    </actions>
+</idea-plugin>
