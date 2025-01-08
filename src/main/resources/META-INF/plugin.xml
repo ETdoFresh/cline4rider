@@ -12,6 +12,11 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <applicationService serviceImplementation="com.cline.MainApplicationComponent"/>
+        <toolWindow id="Cline"
+                   secondary="true"
+                   icon="AllIcons.General.Modified"
+                   anchor="right"
+                   factoryClass="com.cline.ui.ClineToolWindowFactory"/>
     </extensions>
 
     <actions>
