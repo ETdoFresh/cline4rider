@@ -3,4 +3,22 @@
         <information>We are porting a vscode extension call Cline to Rider</information>
         <information>The existing vscode extension is found in C:\Users\etgarcia\Projects\ai\cline-dev-et</information>
     </background>
+    
+    <build_requirements>
+        <requirement>JDK 17 (JetBrains Runtime recommended)</requirement>
+        <requirement>Gradle 8.6 or later</requirement>
+        <requirement>IntelliJ Platform SDK</requirement>
+    </build_requirements>
+
+    <build_instructions>
+        <step>To build the plugin: ./gradlew buildPlugin</step>
+        <step>To run in development: ./gradlew runIde</step>
+        <step>Plugin output will be in: build/distributions/cline4rider-[version].zip</step>
+    </build_instructions>
+
+    <development_notes>
+        <note>Kotlin API version is set to 1.8 to match Rider 2024.1 requirements</note>
+        <note>Code instrumentation is disabled to avoid JDK path issues</note>
+        <note>Uses Rider 2024.1.1 SDK (RD-241.14494.326)</note>
+    </development_notes>
 </custom_rules>
