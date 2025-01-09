@@ -51,9 +51,25 @@ class ClineToolWindow(private val project: Project) : JPanel(BorderLayout()) {
         }
     }
 
+    private val welcomeMessage = """
+        <div style='margin: 20px; color: #A9B7C6;'>
+            <h2>What can I do for you?</h2>
+            <p>Thanks to Claude 3.5 Sonnet's agentic coding capabilities, I can handle complex software development tasks step-by-step.</p>
+            <p>With tools that let me create & edit files, explore complex projects, use the browser, and execute terminal commands 
+            (after you grant permission), I can assist you in ways that go beyond code completion or tech support.</p>
+            <p>I can even use MCP to create new tools and extend my own capabilities.</p>
+            <div style='margin-top: 20px;'>
+                <h3 style='color: #A9B7C6;'>Recent Tasks</h3>
+                <div id='recentTasks'></div>
+            </div>
+        </div>
+    """.trimIndent()
+
     init {
         setupUI()
         setupListeners()
+        // Show welcome message initially
+        updateChatDisplay(emptyList(), showWelcome = true)
     }
 
     private fun setupUI() {
@@ -68,8 +84,15 @@ class ClineToolWindow(private val project: Project) : JPanel(BorderLayout()) {
         val inputPanel = JPanel(BorderLayout()).apply {
             border = BorderFactory.createEmptyBorder(0, 5, 5, 5)
             
-            // Add input area
-            add(JBScrollPane(inputArea), BorderLayout.CENTER)
+            // Add input area with placeholder
+            val inputWrapper = JPanel(BorderLayout()).apply {
+                add(JBScrollPane(inputArea), BorderLayout.CENTER)
+                add(JLabel("Type your task here (@ to add context)...").apply {
+                    foreground = JBUI.CurrentTheme.Label.disabledForeground()
+                    border = BorderFactory.createEmptyBorder(0, 5, 0, 0)
+                }, BorderLayout.NORTH)
+            }
+            add(inputWrapper, BorderLayout.CENTER)
             
             // Add buttons panel
             val buttonsPanel = JPanel(FlowLayout(FlowLayout.RIGHT)).apply {
@@ -126,7 +149,7 @@ class ClineToolWindow(private val project: Project) : JPanel(BorderLayout()) {
         inputArea.requestFocusInWindow()
     }
 
-    private fun updateChatDisplay(messages: List<ClineMessage>) {
+    private fun updateChatDisplay(messages: List<ClineMessage>, showWelcome: Boolean = false) {
         val htmlContent = StringBuilder()
         htmlContent.append("""
             <html>
@@ -137,10 +160,33 @@ class ClineToolWindow(private val project: Project) : JPanel(BorderLayout()) {
                     .message pre { margin: 5px 0; white-space: pre-wrap; }
                     .message code { font-family: "JetBrains Mono", monospace; }
                     .timestamp { font-size: 0.8em; color: #666; float: right; }
+                    .recent-task { 
+                        background-color: #2B2B2B; 
+                        padding: 8px; 
+                        margin: 5px 0; 
+                        border-radius: 4px;
+                        cursor: pointer;
+                    }
+                    .recent-task:hover { 
+                        background-color: #353535; 
+                    }
+                    .task-time { 
+                        color: #666; 
+                        font-size: 0.9em; 
+                    }
+                    .task-tokens { 
+                        color: #666; 
+                        font-size: 0.8em;
+                        float: right;
+                    }
                 </style>
             </head>
             <body>
         """.trimIndent())
+
+        if (showWelcome && messages.isEmpty()) {
+            htmlContent.append(welcomeMessage)
+        }
         
         messages.forEach { message ->
             val (backgroundColor, textColor, icon) = when (message.type) {
