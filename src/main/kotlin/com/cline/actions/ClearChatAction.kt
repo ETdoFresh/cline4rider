@@ -3,10 +3,13 @@ package com.cline.actions
 import com.cline.ui.model.ChatViewModel
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
+import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.DumbAware
 
 class ClearChatAction : AnAction(), DumbAware {
+    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
+
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
         project.service<ChatViewModel>().clearMessages()

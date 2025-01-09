@@ -21,4 +21,19 @@
         <note>Code instrumentation is disabled to avoid JDK path issues</note>
         <note>Uses Rider 2024.1.1 SDK (RD-241.14494.326)</note>
     </development_notes>
+
+    <powershell_commands>
+        <command>
+            <name>Clean Gradle Cache and Rebuild</name>
+            <script>Remove-Item -Path "$env:USERPROFILE\.gradle\caches" -Recurse -Force; ./gradlew clean --refresh-dependencies</script>
+        </command>
+        <command>
+            <name>Stop Gradle Daemons</name>
+            <script>./gradlew --stop</script>
+        </command>
+        <command>
+            <name>Build with Debug</name>
+            <script>./gradlew buildPlugin --debug</script>
+        </command>
+    </powershell_commands>
 </custom_rules>
