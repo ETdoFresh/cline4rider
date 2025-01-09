@@ -11,7 +11,7 @@ import com.intellij.util.xmlb.XmlSerializerUtil
 class ClineSettings : PersistentStateComponent<ClineSettings> {
     var apiKey: String = ""
     var apiEndpoint: String = "https://openrouter.ai/api/v1/chat/completions"
-    var model: String = "openai/gpt-4-turbo"
+    var model: String = "openai/gpt-4o-mini"
     var maxTokens: Int = 128000
     var temperature: Double = 0.0
     var systemPromptPath: String = ".clinesystemprompt"
