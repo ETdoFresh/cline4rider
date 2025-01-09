@@ -1,5 +1,5 @@
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "1.9.22"
+    kotlin("jvm") version "1.9.22"
     id("org.jetbrains.intellij") version "1.17.0"
 }
 
@@ -8,25 +8,22 @@ version = "1.0.0"
 
 repositories {
     mavenCentral()
-}
-
-dependencies {
-    // Remove explicit kotlin-stdlib dependency as it's provided by the platform
-    compileOnly(kotlin("stdlib-jdk8"))
-    implementation(kotlin("reflect"))
-}
-
-kotlin {
-    jvmToolchain(17)
+    maven { url = uri("https://www.jetbrains.com/intellij-repository/releases") }
 }
 
 intellij {
-    version.set("2024.1.1")
+    version.set("2024.1")
     type.set("RD")
-    downloadSources.set(true)
-    updateSinceUntilBuild.set(true)
-    // No additional plugins needed for basic functionality
-    plugins.set(listOf())
+    plugins.set(emptyList())
+    instrumentCode.set(false)  // Disable code instrumentation to avoid JDK path issues
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
+    }
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 tasks {
@@ -57,7 +54,27 @@ tasks {
         }
     }
 
-    instrumentCode {
-        enabled = false
+    prepareSandbox {
+        enabled = true
+        doFirst {
+            delete(destinationDir)
+        }
+    }
+
+    jar {
+        enabled = true
+    }
+}
+
+// Configure Gradle build
+configurations.all {
+    resolutionStrategy {
+        // Cache dynamic versions for 10 minutes
+        cacheDynamicVersionsFor(10, "minutes")
+        // Cache changing modules for 10 minutes
+        cacheChangingModulesFor(10, "minutes")
+        // Force specific versions if needed
+        force("org.jetbrains.kotlin:kotlin-stdlib:1.9.22")
+        force("org.jetbrains.kotlin:kotlin-reflect:1.9.22")
     }
 }

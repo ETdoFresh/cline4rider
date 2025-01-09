@@ -11,7 +11,15 @@
     <depends>com.intellij.modules.rider</depends>
 
     <extensions defaultExtensionNs="com.intellij">
+        <!-- Application-level services -->
         <applicationService serviceImplementation="com.cline.MainApplicationComponent"/>
+        <applicationService serviceImplementation="com.cline.ClineMessageHandler"/>
+
+        <!-- Project-level services -->
+        <projectService serviceImplementation="com.cline.ui.model.ChatViewModel"/>
+        <projectService serviceImplementation="com.cline.tasks.TaskProcessor"/>
+
+        <!-- Tool Windows -->
         <toolWindow id="Cline"
                    secondary="false"
                    icon="AllIcons.Actions.Message"
@@ -20,6 +28,18 @@
     </extensions>
 
     <actions>
-        <!-- Actions will be added in Phase 2 -->
+        <!-- Basic actions for Phase 2 -->
+        <action id="Cline.NewTask"
+                class="com.cline.actions.NewTaskAction"
+                text="New Cline Task"
+                description="Create a new Cline task">
+            <keyboard-shortcut keymap="$default" first-keystroke="control shift C"/>
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta shift C"/>
+        </action>
+
+        <action id="Cline.ClearChat"
+                class="com.cline.actions.ClearChatAction"
+                text="Clear Cline Chat"
+                description="Clear the current chat history"/>
     </actions>
 </idea-plugin>
