@@ -153,11 +153,10 @@ class ClineToolWindow(private val project: Project) : JPanel(BorderLayout()) {
         isFocusPainted = false
         toolTipText = "Settings"
         addActionListener {
-            val dialog = com.cline.settings.ClineSettingsDialog(project)
-            if (dialog.showAndGet()) {
-                // Settings were updated, refresh the UI if needed
-                updateChatDisplay(viewModel.getMessages())
-            }
+            com.intellij.openapi.options.ShowSettingsUtil.getInstance().showSettingsDialog(
+                project,
+                "Cline"
+            )
         }
     }
 

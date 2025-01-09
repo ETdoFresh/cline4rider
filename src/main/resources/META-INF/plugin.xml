@@ -37,6 +37,13 @@
                           displayType="BALLOON"
                           key="notification.group.cline"/>
 
+        <!-- Settings -->
+        <applicationConfigurable
+                parentId="tools"
+                instance="com.cline.settings.ClineSettingsConfigurable"
+                id="com.cline.settings.ClineSettingsConfigurable"
+                displayName="Cline"/>
+
         <!-- Startup Activities -->
         <postStartupActivity implementation="com.cline.startup.ClineStartupActivity"/>
     </extensions>

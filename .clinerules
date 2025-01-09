@@ -2,6 +2,8 @@
     <background>
         <information>We are porting a vscode extension call Cline to Rider</information>
         <information>The existing vscode extension is found in ./cline</information>
+        <information>The entry point to the extension is found in ./cline/src/extension.ts, please read before continuing</information>
+        <information>A Port to Rider Specification document exists in ./PortSpecification.md, please read before continuing</information>
     </background>
     
     <build_requirements>
@@ -76,4 +78,11 @@
             <script>git add . ; git commit -m "$args[0]" ; git push</script>
         </command>
     </powershell_commands>
+
+    <task_completion_requirements>
+        <requirement>Stop all Gradle daemons before building</requirement>
+        <requirement>Clean and rebuild the project</requirement>
+        <requirement>Run IDE for testing</requirement>
+        <command>./gradlew --stop ; ./gradlew clean buildPlugin ; ./gradlew runIde -q</command>
+    </task_completion_requirements>
 </custom_rules>
