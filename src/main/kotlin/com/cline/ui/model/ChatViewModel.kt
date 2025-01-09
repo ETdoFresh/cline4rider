@@ -1,58 +1,148 @@
 package com.cline.ui.model
 
-import com.cline.ClineMessageListener
-import com.cline.ClineTopics
+import com.cline.api.AnthropicClient
+import com.cline.api.Message
 import com.cline.model.ClineMessage
 import com.cline.model.MessageType
 import com.intellij.openapi.Disposable
-import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
+import kotlinx.coroutines.*
 import java.util.concurrent.CopyOnWriteArrayList
 
 @Service(Service.Level.PROJECT)
-class ChatViewModel(private val project: Project) : ClineMessageListener, Disposable {
+class ChatViewModel(private val project: Project) : Disposable {
     private val logger = Logger.getInstance(ChatViewModel::class.java)
     private val messages = CopyOnWriteArrayList<ClineMessage>()
     private val recentTasks = CopyOnWriteArrayList<ClineMessage>()
-    private val listeners = CopyOnWriteArrayList<(List<ClineMessage>) -> Unit>()
-    private val connection = ApplicationManager.getApplication().messageBus.connect()
+    private val messageListeners = CopyOnWriteArrayList<(List<ClineMessage>) -> Unit>()
+    private val stateListeners = CopyOnWriteArrayList<(Boolean) -> Unit>()
+    private val apiClient = AnthropicClient.getInstance()
+    private val chatHistory = com.intellij.openapi.components.service<com.cline.persistence.ChatHistory>()
+    private val coroutineScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var currentTaskId: String? = null
 
     init {
-        connection.subscribe(ClineTopics.CLINE_MESSAGES, this)
         logger.info("ChatViewModel initialized for project: ${project.name}")
-    }
-
-    override fun onMessageReceived(message: ClineMessage) {
-        when (message.type) {
-            MessageType.TASK_REQUEST -> {
-                currentTaskId = message.metadata["taskId"] ?: generateTaskId()
-                messages.add(message)
-                addToRecentTasks(message)
-            }
-            MessageType.TASK_COMPLETE -> {
-                messages.add(message)
-                updateRecentTaskStatus(currentTaskId, message)
-                currentTaskId = null
-            }
-            MessageType.ERROR -> {
-                logger.warn("Error message received: ${message.content}")
-                messages.add(message)
-                updateRecentTaskStatus(currentTaskId, message)
-            }
-            else -> messages.add(message)
-        }
+        
+        // Load persisted messages
+        messages.addAll(chatHistory.getAllMessages())
+        recentTasks.addAll(chatHistory.getAllRecentTasks())
+        
+        // Notify listeners of initial state
         notifyListeners()
     }
 
-    private fun generateTaskId(): String {
-        return "task_${System.currentTimeMillis()}"
+    fun sendMessage(content: String) {
+        // Check API settings first
+        if (apiClient.settings.apiKey.isEmpty()) {
+            com.cline.notifications.ClineNotifier.notifyErrorWithAction(
+                project,
+                "Please configure your API key in the settings before using Cline.",
+                "API Key Required"
+            )
+            return
+        }
+
+        val taskId = generateTaskId()
+        val userMessage = ClineMessage(
+            type = MessageType.TASK_REQUEST,
+            content = content,
+            metadata = mapOf(
+                "taskId" to taskId,
+                "timestamp" to System.currentTimeMillis().toString(),
+                "project" to project.name
+            )
+        )
+
+        currentTaskId = taskId
+        messages.add(userMessage)
+        chatHistory.addMessage(userMessage)
+        addToRecentTasks(userMessage)
+        notifyListeners()
+
+        coroutineScope.launch {
+            val apiMessages = messages.map { Message(
+                role = if (it.type == MessageType.TASK_REQUEST) "user" else "assistant",
+                content = it.content
+            )}
+
+            when (val result = apiClient.sendMessage(apiMessages)) {
+                is com.cline.api.ApiResult.Success -> {
+                    val response = result.data
+                    val assistantMessage = ClineMessage(
+                        type = MessageType.TASK_COMPLETE,
+                        content = response.content.joinToString("") { it.text },
+                        metadata = mapOf(
+                            "taskId" to taskId,
+                            "timestamp" to System.currentTimeMillis().toString(),
+                            "tokens" to "${response.usage.input_tokens + response.usage.output_tokens}",
+                            "model" to response.model
+                        )
+                    )
+                    
+                    withContext(Dispatchers.Main) {
+                        messages.add(assistantMessage)
+                        chatHistory.addMessage(assistantMessage)
+                        updateRecentTaskStatus(taskId, assistantMessage)
+                        currentTaskId = null
+                        notifyListeners()
+                    }
+                }
+                is com.cline.api.ApiResult.Error -> {
+                    val errorMessage = ClineMessage(
+                        type = MessageType.ERROR,
+                        content = result.message,
+                        metadata = mapOf(
+                            "taskId" to taskId,
+                            "timestamp" to System.currentTimeMillis().toString(),
+                            "errorCode" to (result.code?.toString() ?: "unknown")
+                        )
+                    )
+                    
+                    withContext(Dispatchers.Main) {
+                        messages.add(errorMessage)
+                        chatHistory.addMessage(errorMessage)
+                        updateRecentTaskStatus(taskId, errorMessage)
+                        currentTaskId = null
+                        notifyListeners()
+
+                        // Show notification for API errors
+                        when (result.code) {
+                            401 -> {
+                                com.cline.notifications.ClineNotifier.notifyErrorWithAction(
+                                    project,
+                                    "Invalid API key. Please check your settings.",
+                                    "Authentication Error"
+                                )
+                            }
+                            429 -> {
+                                com.cline.notifications.ClineNotifier.notifyWarning(
+                                    project,
+                                    "Rate limit exceeded. Please try again later.",
+                                    "Rate Limit"
+                                )
+                            }
+                            else -> {
+                                com.cline.notifications.ClineNotifier.notifyError(
+                                    project,
+                                    result.message,
+                                    "API Error"
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
+
+    private fun generateTaskId(): String = "task_${System.currentTimeMillis()}"
 
     private fun addToRecentTasks(message: ClineMessage) {
         recentTasks.add(0, message)
+        chatHistory.addRecentTask(message)
         if (recentTasks.size > MAX_RECENT_TASKS) {
             recentTasks.removeAt(recentTasks.size - 1)
         }
@@ -68,56 +158,56 @@ class ChatViewModel(private val project: Project) : ClineMessageListener, Dispos
                     put("status", if (completionMessage.type == MessageType.ERROR) "error" else "completed")
                     put("completionTime", System.currentTimeMillis().toString())
                 }
-                recentTasks[taskIndex] = task.copy(metadata = updatedMetadata)
+                val updatedTask = task.copy(metadata = updatedMetadata)
+                recentTasks[taskIndex] = updatedTask
+                chatHistory.addRecentTask(updatedTask)
             }
         }
     }
 
-    fun addListener(listener: (List<ClineMessage>) -> Unit) {
-        listeners.add(listener)
+    fun clearMessages() {
+        messages.clear()
+        recentTasks.clear()
+        chatHistory.clear()
+        notifyListeners()
+    }
+
+    fun addMessageListener(listener: (List<ClineMessage>) -> Unit) {
+        messageListeners.add(listener)
         listener(messages.toList()) // Initial state
     }
 
-    fun removeListener(listener: (List<ClineMessage>) -> Unit) {
-        listeners.remove(listener)
+    fun removeMessageListener(listener: (List<ClineMessage>) -> Unit) {
+        messageListeners.remove(listener)
+    }
+
+    fun addStateListener(listener: (Boolean) -> Unit) {
+        stateListeners.add(listener)
+        listener(currentTaskId != null) // Initial state
+    }
+
+    fun removeStateListener(listener: (Boolean) -> Unit) {
+        stateListeners.remove(listener)
     }
 
     private fun notifyListeners() {
         val currentMessages = messages.toList()
-        listeners.forEach { it(currentMessages) }
+        messageListeners.forEach { it(currentMessages) }
+        stateListeners.forEach { it(currentTaskId != null) }
     }
 
     override fun dispose() {
-        connection.disconnect()
-        listeners.clear()
+        coroutineScope.cancel()
+        messageListeners.clear()
+        stateListeners.clear()
         messages.clear()
         recentTasks.clear()
+        // Don't clear persistent storage on dispose
     }
 
-    fun sendMessage(content: String) {
-        val taskId = generateTaskId()
-        val message = ClineMessage(
-            type = MessageType.TASK_REQUEST,
-            content = content,
-            metadata = mapOf(
-                "taskId" to taskId,
-                "timestamp" to System.currentTimeMillis().toString(),
-                "project" to project.name
-            )
-        )
-        
-        logger.info("Sending message with taskId: $taskId")
-        ApplicationManager.getApplication().messageBus
-            .syncPublisher(ClineTopics.CLINE_MESSAGES)
-            .onMessageReceived(message)
-    }
+    fun isProcessing(): Boolean = currentTaskId != null
 
     fun getCurrentTask(): String? = currentTaskId
-
-    fun clearMessages() {
-        messages.clear()
-        notifyListeners()
-    }
 
     fun getMessages(): List<ClineMessage> = messages.toList()
     

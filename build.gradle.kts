@@ -67,6 +67,11 @@ tasks {
 }
 
 // Configure Gradle build
+dependencies {
+    // Gson for JSON handling
+    implementation("com.google.code.gson:gson:2.10.1")
+}
+
 configurations.all {
     resolutionStrategy {
         // Cache dynamic versions for 10 minutes
