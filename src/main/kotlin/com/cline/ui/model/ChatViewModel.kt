@@ -73,12 +73,13 @@ class ChatViewModel(private val project: Project) : Disposable {
                     val response = result.data
                     val assistantMessage = ClineMessage(
                         type = MessageType.TASK_COMPLETE,
-                        content = response.content.joinToString("") { it.text },
+                        content = response.choices.first().message.content,
                         metadata = mapOf(
                             "taskId" to taskId,
                             "timestamp" to System.currentTimeMillis().toString(),
-                            "tokens" to "${response.usage.input_tokens + response.usage.output_tokens}",
-                            "model" to response.model
+                            "tokens" to "${response.usage.total_tokens}",
+                            "model" to response.model,
+                            "finish_reason" to (response.choices.first().finish_reason ?: "unknown")
                         )
                     )
                     
