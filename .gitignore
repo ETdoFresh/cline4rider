@@ -28,3 +28,6 @@ build
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Java heap dump files
+*.hprof
