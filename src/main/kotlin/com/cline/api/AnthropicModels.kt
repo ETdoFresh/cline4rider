@@ -28,7 +28,11 @@ data class AnthropicRequest(
     @SerializedName("temperature")
     val temperature: Double,
     @SerializedName("system")
-    val system: String? = null
+    val system: String? = null,
+    @SerializedName("transforms")
+    val transforms: List<String> = listOf("middle-out"),
+    @SerializedName("route")
+    val route: String = "fallback"
 ) {
     init {
         require(messages.isNotEmpty()) {
@@ -46,34 +50,34 @@ data class AnthropicRequest(
 data class AnthropicResponse(
     @SerializedName("id")
     val id: String,
-    @SerializedName("type")
+    @SerializedName("object")
     val type: String,
-    @SerializedName("role")
-    val role: String,
-    @SerializedName("content")
-    val content: List<ContentBlock>,
+    @SerializedName("created")
+    val created: Long,
     @SerializedName("model")
     val model: String,
-    @SerializedName("stop_reason")
-    val stop_reason: String?,
-    @SerializedName("stop_sequence")
-    val stop_sequence: String?,
+    @SerializedName("choices")
+    val choices: List<Choice>,
     @SerializedName("usage")
     val usage: Usage
 )
 
-data class ContentBlock(
-    @SerializedName("type")
-    val type: String,
-    @SerializedName("text")
-    val text: String
+data class Choice(
+    @SerializedName("index")
+    val index: Int,
+    @SerializedName("message")
+    val message: Message,
+    @SerializedName("finish_reason")
+    val finish_reason: String?
 )
 
 data class Usage(
-    @SerializedName("input_tokens")
+    @SerializedName("prompt_tokens")
     val input_tokens: Int,
-    @SerializedName("output_tokens")
-    val output_tokens: Int
+    @SerializedName("completion_tokens")
+    val output_tokens: Int,
+    @SerializedName("total_tokens")
+    val total_tokens: Int
 )
 
 sealed class ApiResult<out T> {

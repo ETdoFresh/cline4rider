@@ -22,15 +22,26 @@ class AnthropicClient {
                 context: com.google.gson.JsonDeserializationContext
             ): AnthropicResponse {
                 try {
-                    if (json.isJsonObject) {
-                        return context.deserialize(json, AnthropicResponse::class.java)
-                    } else {
-                        logger.error("Unexpected response format: $json")
+                    val jsonStr = json.toString()
+                    if (jsonStr.trim().startsWith("<!DOCTYPE") || jsonStr.trim().startsWith("<html")) {
+                        logger.error("Received HTML response instead of JSON")
+                        throw com.google.gson.JsonParseException("Received HTML response instead of JSON. This usually indicates an API configuration issue.")
+                    }
+                    
+                    if (!json.isJsonObject) {
+                        logger.error("Response is not a JSON object: $json")
                         throw com.google.gson.JsonParseException("Response is not a JSON object")
                     }
+                    
+                    return context.deserialize(json, AnthropicResponse::class.java)
                 } catch (e: Exception) {
-                    logger.error("Failed to deserialize response", e)
-                    throw e
+                    when (e) {
+                        is com.google.gson.JsonParseException -> throw e
+                        else -> {
+                            logger.error("Failed to deserialize response", e)
+                            throw com.google.gson.JsonParseException("Failed to parse API response: ${e.message}", e)
+                        }
+                    }
                 }
             }
         })
@@ -68,79 +79,87 @@ class AnthropicClient {
                 return ApiResult.Error("Failed to prepare request: ${e.message}")
             }
             
-            logger.info("Sending request to Anthropic API: $requestBody")
+            logger.info("Sending request to OpenRouter API: $requestBody")
             
             val httpRequest = HttpRequest.newBuilder()
                 .uri(URI.create(settings.apiEndpoint))
                 .header("Content-Type", "application/json")
-                .header("x-api-key", settings.apiKey)
-                .header("anthropic-version", "2023-06-01")
+                .header("HTTP-Referer", "https://github.com/ethangarcia/cline4rider")
+                .header("Authorization", "Bearer ${settings.apiKey}")
+                .header("X-Title", "Cline4Rider")
+                .header("User-Agent", "Cline4Rider/1.0.0")
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build()
 
             val response = client.send(httpRequest, HttpResponse.BodyHandlers.ofString())
             val responseBody = response.body()
             
-            if (response.statusCode() != 200) {
-                logger.warn("Anthropic API error (${response.statusCode()}): $responseBody")
-            } else {
-                logger.info("Anthropic API response (${response.statusCode()}): $responseBody")
+            // Check for HTML response before processing
+            if (responseBody.trim().startsWith("<!DOCTYPE") || responseBody.trim().startsWith("<html")) {
+                logger.error("Received HTML response from API")
+                throw AnthropicException(
+                    "Received HTML response from API. Please check your API endpoint configuration.",
+                    response.statusCode(),
+                    responseBody
+                )
             }
 
-            when (response.statusCode()) {
-                200 -> try {
-                    if (responseBody.isBlank()) {
-                        throw AnthropicException("Empty response from API", response.statusCode(), responseBody)
-                    }
-                    ApiResult.Success(gson.fromJson(responseBody, AnthropicResponse::class.java))
-                } catch (e: com.google.gson.JsonSyntaxException) {
-                    logger.error("Failed to parse API response", e)
-                    throw AnthropicException(
-                        "Invalid JSON response from API",
-                        response.statusCode(),
-                        responseBody,
-                        e
-                    )
+            if (response.statusCode() != 200) {
+                logger.warn("OpenRouter API error (${response.statusCode()}): $responseBody")
+                
+                // Try to parse error message from JSON response
+                try {
+                    val errorJson = gson.fromJson(responseBody, Map::class.java)
+                    val errorMessage = (errorJson["error"] as? Map<*, *>)?.get("message") as? String
+                        ?: errorJson["error"] as? String
+                        ?: "Unknown error"
+                    throw AnthropicException(errorMessage, response.statusCode(), responseBody)
                 } catch (e: Exception) {
-                    when (e) {
-                        is AnthropicException -> throw e
-                        else -> {
-                            logger.error("Unexpected error parsing API response", e)
-                            throw AnthropicException(
-                                "Failed to process API response: ${e.message}",
-                                response.statusCode(),
-                                responseBody,
-                                e
-                            )
-                        }
+                    logger.warn("Failed to parse error response", e)
+                }
+            }
+
+            try {
+                if (responseBody.isBlank()) {
+                    throw AnthropicException("Empty response from API", response.statusCode(), responseBody)
+                }
+                
+                val response = gson.fromJson(responseBody, AnthropicResponse::class.java)
+                if (response.choices.isEmpty()) {
+                    throw AnthropicException(
+                        "API response contained no choices",
+                        200,
+                        responseBody
+                    )
+                }
+                return ApiResult.Success(response)
+            } catch (e: com.google.gson.JsonSyntaxException) {
+                logger.error("Failed to parse API response", e)
+                throw AnthropicException(
+                    "Invalid JSON response from API. Response: ${responseBody.take(500)}...",
+                    response.statusCode(),
+                    responseBody,
+                    e
+                )
+            } catch (e: Exception) {
+                when (e) {
+                    is AnthropicException -> throw e
+                    else -> {
+                        logger.error("Unexpected error parsing API response", e)
+                        throw AnthropicException(
+                            "Failed to process API response: ${e.message}",
+                            response.statusCode(),
+                            responseBody,
+                            e
+                        )
                     }
                 }
-                401 -> throw AnthropicException(
-                    "Invalid API key. Please check your settings.",
-                    response.statusCode(),
-                    responseBody
-                )
-                429 -> throw AnthropicException(
-                    "Rate limit exceeded. Please try again later.",
-                    response.statusCode(),
-                    responseBody
-                )
-                500 -> throw AnthropicException(
-                    "Server error. Please try again later.",
-                    response.statusCode(),
-                    responseBody
-                )
-                else -> throw AnthropicException(
-                    "Unexpected error from Anthropic API",
-                    response.statusCode(),
-                    responseBody
-                )
             }
         } catch (e: Exception) {
-            logger.warn("Error in Anthropic API communication", e)
+            logger.warn("Error in OpenRouter API communication", e)
             return when (e) {
                 is AnthropicException -> ApiResult.Error(e.message ?: "Unknown error", e.statusCode)
-                else -> ApiResult.Error("Failed to communicate with Anthropic API: ${e.message}")
+                else -> ApiResult.Error("Failed to communicate with OpenRouter API: ${e.message}")
             }
         }
     }

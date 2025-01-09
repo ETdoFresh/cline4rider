@@ -10,10 +10,10 @@ import com.intellij.util.xmlb.XmlSerializerUtil
 @Service
 class ClineSettings : PersistentStateComponent<ClineSettings> {
     var apiKey: String = ""
-    var apiEndpoint: String = "https://api.anthropic.com/v1/messages"
-    var model: String = "claude-3-sonnet-20240229"
-    var maxTokens: Int = 4096
-    var temperature: Double = 0.7
+    var apiEndpoint: String = "https://openrouter.ai/api/v1/chat/completions"
+    var model: String = "openai/gpt-4-turbo"
+    var maxTokens: Int = 128000
+    var temperature: Double = 0.0
     var systemPromptPath: String = ".clinesystemprompt"
     var rulesPath: String = ".clinerules"
 
