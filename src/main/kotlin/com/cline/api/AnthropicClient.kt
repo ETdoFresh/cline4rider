@@ -33,7 +33,43 @@ class AnthropicClient {
                         throw com.google.gson.JsonParseException("Response is not a JSON object")
                     }
                     
-                    return context.deserialize(json, AnthropicResponse::class.java)
+                    val jsonObject = json.asJsonObject
+                    
+                    // Manual deserialization to avoid recursion
+                    val id = jsonObject.get("id").asString
+                    val type = jsonObject.get("object").asString
+                    val created = jsonObject.get("created").asLong
+                    val model = jsonObject.get("model").asString
+                    
+                    val choicesArray = jsonObject.getAsJsonArray("choices")
+                    val choices = choicesArray.map { choiceElement ->
+                        val choiceObj = choiceElement.asJsonObject
+                        val messageObj = choiceObj.getAsJsonObject("message")
+                        Choice(
+                            index = choiceObj.get("index").asInt,
+                            message = Message(
+                                role = messageObj.get("role").asString,
+                                content = messageObj.get("content").asString
+                            ),
+                            finish_reason = choiceObj.get("finish_reason")?.asString
+                        )
+                    }
+                    
+                    val usageObj = jsonObject.getAsJsonObject("usage")
+                    val usage = Usage(
+                        input_tokens = usageObj.get("prompt_tokens").asInt,
+                        output_tokens = usageObj.get("completion_tokens").asInt,
+                        total_tokens = usageObj.get("total_tokens").asInt
+                    )
+                    
+                    return AnthropicResponse(
+                        id = id,
+                        type = type,
+                        created = created,
+                        model = model,
+                        choices = choices,
+                        usage = usage
+                    )
                 } catch (e: Exception) {
                     when (e) {
                         is com.google.gson.JsonParseException -> throw e
