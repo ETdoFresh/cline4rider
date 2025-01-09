@@ -1,7 +1,7 @@
 <custom_rules>
     <background>
         <information>We are porting a vscode extension call Cline to Rider</information>
-        <information>The existing vscode extension is found in C:\Users\etgarcia\Projects\ai\cline-dev-et</information>
+        <information>The existing vscode extension is found in ./cline</information>
     </background>
     
     <build_requirements>
