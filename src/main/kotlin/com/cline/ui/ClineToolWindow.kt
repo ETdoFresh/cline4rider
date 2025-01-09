@@ -134,8 +134,12 @@ class ClineToolWindow(private val project: Project) : JPanel(BorderLayout()) {
     init {
         setupUI()
         setupListeners()
-        // Show welcome message initially
-        updateChatDisplay(emptyList(), showWelcome = true)
+        
+        // Defer welcome message display until application is ready
+        com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater({
+            if (project.isDisposed) return@invokeLater
+            updateChatDisplay(emptyList(), showWelcome = true)
+        }, project.disposed)
     }
 
     private val settingsButton = JButton("⚙").apply {
@@ -285,6 +289,13 @@ class ClineToolWindow(private val project: Project) : JPanel(BorderLayout()) {
     }
 
     private fun updateChatDisplay(messages: List<ClineMessage>, showWelcome: Boolean = false) {
+        if (!com.intellij.openapi.application.ApplicationManager.getApplication().isDispatchThread) {
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater({
+                if (project.isDisposed) return@invokeLater
+                updateChatDisplay(messages, showWelcome)
+            }, project.disposed)
+            return
+        }
         val htmlContent = StringBuilder()
         htmlContent.append("""
             <html>

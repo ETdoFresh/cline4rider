@@ -12,7 +12,7 @@
 
     <build_instructions>
         <step>To build the plugin: ./gradlew buildPlugin</step>
-        <step>To run in development: ./gradlew runIde</step>
+        <step>To run in development: ./gradlew runIde -q</step>
         <step>Plugin output will be in: build/distributions/cline4rider-[version].zip</step>
     </build_instructions>
 

@@ -26,6 +26,19 @@ object ClineNotifier {
         type: NotificationType,
         configure: ((com.intellij.notification.Notification) -> Unit)? = null
     ) {
+        val application = com.intellij.openapi.application.ApplicationManager.getApplication()
+        
+        if (!application.isDispatchThread) {
+            application.invokeLater(
+                Runnable {
+                    if (project?.isDisposed == true) return@Runnable
+                    notify(project, content, title, type, configure)
+                },
+                com.intellij.openapi.application.ModalityState.NON_MODAL
+            )
+            return
+        }
+
         NotificationGroupManager.getInstance()
             .getNotificationGroup(GROUP_ID)
             .createNotification(title, content, type)
