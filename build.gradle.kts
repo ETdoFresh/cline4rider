@@ -26,10 +26,26 @@ intellij {
     instrumentCode.set(false)
 }
 
+sourceSets {
+    test {
+        resources {
+            srcDirs("src/test/resources", "src/test/testData")
+        }
+    }
+}
+
 dependencies {
     implementation("com.google.code.gson:gson:2.10.1")
     implementation(kotlin("stdlib-jdk8"))
     implementation(kotlin("reflect"))
+    
+    testImplementation("org.jetbrains.kotlin:kotlin-test")
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
+    testImplementation("org.junit.jupiter:junit-jupiter-api:5.9.2")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.9.2")
+    testImplementation("io.mockk:mockk:1.13.8")
+    testImplementation("com.intellij:platform-test-framework:241.14494.326")
+    testImplementation("com.intellij:rider-test-framework:241.14494.326")
 }
 
 tasks {
@@ -58,5 +74,27 @@ tasks {
 
     test {
         useJUnitPlatform()
+        systemProperty("idea.home.path", project.layout.buildDirectory.dir("idea-sandbox").get().asFile.absolutePath)
+        systemProperty("idea.force.use.core.classloader", "true")
+        systemProperty("idea.use.core.classloader.for.plugin.path", "true")
+        jvmArgs("-ea", "-Xmx1024m")
+        testLogging {
+            events("passed", "skipped", "failed")
+            showStandardStreams = true
+        }
+    }
+
+    register<JavaExec>("runTests") {
+        group = "verification"
+        description = "Run tests with IntelliJ Platform test runner"
+        
+        classpath = sourceSets["test"].runtimeClasspath
+        mainClass.set("com.cline.ClineTestRunner")
+        
+        systemProperty("idea.home.path", project.layout.buildDirectory.dir("idea-sandbox").get().asFile.absolutePath)
+        systemProperty("idea.force.use.core.classloader", "true")
+        systemProperty("idea.use.core.classloader.for.plugin.path", "true")
+        
+        jvmArgs("-ea", "-Xmx1024m")
     }
 }

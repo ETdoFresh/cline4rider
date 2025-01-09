@@ -17,15 +17,24 @@
     <depends>com.intellij.modules.rider</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Tool Window -->
+        <!-- Tool Windows -->
         <toolWindow id="Cline"
                     icon="/icons/clineToolWindow.svg"
                     anchor="right"
                     secondary="false"
                     canCloseContents="false"
                     factoryClass="com.cline.ui.ClineToolWindowFactory"/>
+        
+        <toolWindow id="Tasks"
+                    icon="/icons/clineToolWindow.svg"
+                    anchor="right"
+                    secondary="true"
+                    canCloseContents="false"
+                    factoryClass="com.cline.task.ui.TaskToolWindowFactory"/>
 
         <!-- Services -->
+        <projectService serviceImplementation="com.cline.task.TaskManager"/>
+        <projectService serviceImplementation="com.cline.task.persistence.TaskStorage"/>
         <applicationService serviceImplementation="com.cline.settings.ClineSettings"/>
         <projectService serviceImplementation="com.cline.ui.model.ChatViewModel"
                        serviceInterface="com.cline.ui.model.ChatViewModel"/>
@@ -57,6 +66,16 @@
             <keyboard-shortcut keymap="$default" first-keystroke="control alt C"/>
             <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta alt C"/>
             <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="meta alt C"/>
+        </action>
+        
+        <action id="Cline.OpenTasksWindow"
+                class="com.cline.actions.OpenTasksAction"
+                text="Open Cline Tasks"
+                description="Open Cline Tasks Window">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="control alt T"/>
+            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta alt T"/>
+            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="meta alt T"/>
         </action>
     </actions>
 

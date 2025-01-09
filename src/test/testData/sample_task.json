@@ -1,0 +1,26 @@
+{
+    "id": "1704812400000",
+    "timestamp": 1704812400000,
+    "text": "Sample task for testing",
+    "tokensIn": 100,
+    "tokensOut": 50,
+    "cacheWrites": 10,
+    "cacheReads": 5,
+    "totalCost": 0.0573,
+    "size": 1024,
+    "images": [],
+    "messages": [
+        {
+            "type": "say",
+            "text": "Sample task for testing",
+            "timestamp": 1704812400000,
+            "partial": false
+        },
+        {
+            "type": "ask",
+            "text": "Processing task...",
+            "timestamp": 1704812400100,
+            "partial": true
+        }
+    ]
+}
