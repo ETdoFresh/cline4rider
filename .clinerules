@@ -22,6 +22,38 @@
         <note>Uses Rider 2024.1.1 SDK (RD-241.14494.326)</note>
     </development_notes>
 
+    <shell_handling>
+        <powershell>
+            <command_separator>;</command_separator>
+            <command_variants>
+                <variant>
+                    <standard>rm -rf</standard>
+                    <powershell>Remove-Item -Recurse -Force</powershell>
+                </variant>
+                <variant>
+                    <standard>cat</standard>
+                    <powershell>Get-Content</powershell>
+                </variant>
+                <variant>
+                    <standard>ls</standard>
+                    <powershell>Get-ChildItem</powershell>
+                </variant>
+                <variant>
+                    <standard>mkdir</standard>
+                    <powershell>New-Item -ItemType Directory</powershell>
+                </variant>
+                <variant>
+                    <standard>cp</standard>
+                    <powershell>Copy-Item</powershell>
+                </variant>
+                <variant>
+                    <standard>mv</standard>
+                    <powershell>Move-Item</powershell>
+                </variant>
+            </command_variants>
+        </powershell>
+    </shell_handling>
+
     <powershell_commands>
         <command>
             <name>Clean Gradle Cache and Rebuild</name>
@@ -34,6 +66,14 @@
         <command>
             <name>Build with Debug</name>
             <script>./gradlew buildPlugin --debug</script>
+        </command>
+        <command>
+            <name>Git Add and Commit</name>
+            <script>git add . ; git commit -m "$args[0]"</script>
+        </command>
+        <command>
+            <name>Git Add Commit Push</name>
+            <script>git add . ; git commit -m "$args[0]" ; git push</script>
         </command>
     </powershell_commands>
 </custom_rules>
