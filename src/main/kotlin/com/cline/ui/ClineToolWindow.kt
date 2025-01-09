@@ -162,62 +162,80 @@ class ClineToolWindow(private val project: Project) : JPanel(BorderLayout()) {
     }
 
     private fun setupUI() {
-        background = JBUI.CurrentTheme.CustomFrameDecorations.paneBackground()
-        
-        // Top toolbar with settings
-        val toolbar = JPanel(BorderLayout()).apply {
+        SwingUtilities.invokeLater {
             background = JBUI.CurrentTheme.CustomFrameDecorations.paneBackground()
-            border = BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(0, 0, 1, 0, JBUI.CurrentTheme.CustomFrameDecorations.separatorForeground()),
-                BorderFactory.createEmptyBorder(4, 8, 4, 8)
-            )
-            add(settingsButton, BorderLayout.EAST)
-        }
-        add(toolbar, BorderLayout.NORTH)
-
-        // Chat display area with padding
-        val chatPanel = JPanel(BorderLayout()).apply {
-            background = JBUI.CurrentTheme.CustomFrameDecorations.paneBackground()
-            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
-            add(JBScrollPane(chatArea).apply {
-                border = BorderFactory.createEmptyBorder()
-                viewport.background = JBUI.CurrentTheme.CustomFrameDecorations.paneBackground()
-            }, BorderLayout.CENTER)
-        }
-        add(chatPanel, BorderLayout.CENTER)
-        
-        // Input panel with buttons
-        val inputPanel = JPanel(BorderLayout()).apply {
-            background = JBUI.CurrentTheme.CustomFrameDecorations.paneBackground()
-            border = BorderFactory.createCompoundBorder(
-                BorderFactory.createMatteBorder(1, 0, 0, 0, JBUI.CurrentTheme.CustomFrameDecorations.separatorForeground()),
-                BorderFactory.createEmptyBorder(12, 12, 12, 12)
-            )
             
-            // Add input area with placeholder
-            val inputWrapper = JPanel(BorderLayout()).apply {
+            // Create all panels first
+            val toolbar = JPanel(BorderLayout())
+            val chatPanel = JPanel(BorderLayout())
+            val inputPanel = JPanel(BorderLayout())
+            val inputWrapper = JPanel(BorderLayout())
+            val buttonsPanel = JPanel(FlowLayout(FlowLayout.RIGHT, 8, 0))
+            
+            // Configure toolbar
+            toolbar.apply {
                 background = JBUI.CurrentTheme.CustomFrameDecorations.paneBackground()
-                add(JBScrollPane(inputArea).apply {
+                border = BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(0, 0, 1, 0, JBUI.CurrentTheme.CustomFrameDecorations.separatorForeground()),
+                    BorderFactory.createEmptyBorder(4, 8, 4, 8)
+                )
+                add(settingsButton, BorderLayout.EAST)
+            }
+            
+            // Configure chat panel
+            chatPanel.apply {
+                background = JBUI.CurrentTheme.CustomFrameDecorations.paneBackground()
+                border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                val scrollPane = JBScrollPane(chatArea).apply {
                     border = BorderFactory.createEmptyBorder()
                     viewport.background = JBUI.CurrentTheme.CustomFrameDecorations.paneBackground()
-                }, BorderLayout.CENTER)
+                }
+                add(scrollPane, BorderLayout.CENTER)
+            }
+            
+            // Configure input area components
+            inputWrapper.apply {
+                background = JBUI.CurrentTheme.CustomFrameDecorations.paneBackground()
+                val scrollPane = JBScrollPane(inputArea).apply {
+                    border = BorderFactory.createEmptyBorder()
+                    viewport.background = JBUI.CurrentTheme.CustomFrameDecorations.paneBackground()
+                }
+                add(scrollPane, BorderLayout.CENTER)
                 add(JLabel("Type your task here (@ to add context)...").apply {
                     foreground = JBUI.CurrentTheme.Label.disabledForeground()
                     font = JBUI.Fonts.create("Segoe UI", 12)
                     border = BorderFactory.createEmptyBorder(0, 2, 4, 0)
                 }, BorderLayout.NORTH)
             }
-            add(inputWrapper, BorderLayout.CENTER)
             
-            // Add buttons panel
-            val buttonsPanel = JPanel(FlowLayout(FlowLayout.RIGHT, 8, 0)).apply {
+            // Configure buttons panel
+            buttonsPanel.apply {
                 background = JBUI.CurrentTheme.CustomFrameDecorations.paneBackground()
                 add(clearButton)
                 add(submitButton)
             }
-            add(buttonsPanel, BorderLayout.SOUTH)
+            
+            // Configure input panel
+            inputPanel.apply {
+                background = JBUI.CurrentTheme.CustomFrameDecorations.paneBackground()
+                border = BorderFactory.createCompoundBorder(
+                    BorderFactory.createMatteBorder(1, 0, 0, 0, JBUI.CurrentTheme.CustomFrameDecorations.separatorForeground()),
+                    BorderFactory.createEmptyBorder(12, 12, 12, 12)
+                )
+                add(inputWrapper, BorderLayout.CENTER)
+                add(buttonsPanel, BorderLayout.SOUTH)
+            }
+            
+            // Add all components to the main panel
+            add(toolbar, BorderLayout.NORTH)
+            add(chatPanel, BorderLayout.CENTER)
+            add(inputPanel, BorderLayout.SOUTH)
+            
+            // Initial UI state
+            updateUIState(false)
+            revalidate()
+            repaint()
         }
-        add(inputPanel, BorderLayout.SOUTH)
     }
 
     private fun setupListeners() {
@@ -464,5 +482,5 @@ class ClineToolWindow(private val project: Project) : JPanel(BorderLayout()) {
         ).show()
     }
 
-    fun getContent() = this
+    // No need for getContent() as the class itself is the content panel
 }

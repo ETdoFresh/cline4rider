@@ -19,15 +19,18 @@
     <extensions defaultExtensionNs="com.intellij">
         <!-- Tool Window -->
         <toolWindow id="Cline"
-                    secondary="true"
                     icon="/icons/clineToolWindow.svg"
                     anchor="right"
+                    secondary="false"
+                    canCloseContents="false"
                     factoryClass="com.cline.ui.ClineToolWindowFactory"/>
 
         <!-- Services -->
         <applicationService serviceImplementation="com.cline.settings.ClineSettings"/>
-        <projectService serviceImplementation="com.cline.ui.model.ChatViewModel"/>
-        <projectService serviceImplementation="com.cline.persistence.ChatHistory"/>
+        <projectService serviceImplementation="com.cline.ui.model.ChatViewModel"
+                       serviceInterface="com.cline.ui.model.ChatViewModel"/>
+        <projectService serviceImplementation="com.cline.persistence.ChatHistory"
+                       serviceInterface="com.cline.persistence.ChatHistory"/>
 
         <!-- Notifications -->
         <notificationGroup id="Cline Notifications"

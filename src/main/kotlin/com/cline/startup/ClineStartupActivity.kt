@@ -5,12 +5,12 @@ import com.cline.settings.ClineSettings
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.StartupActivity
 
-class ClineStartupActivity : StartupActivity {
+class ClineStartupActivity : StartupActivity.DumbAware {
     override fun runActivity(project: Project) {
         // Ensure we're running in the correct thread and application is ready
         com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(
-            Runnable {
-                if (project.isDisposed) return@Runnable
+            {
+                if (project.isDisposed) return@invokeLater
                 
                 val settings = ClineSettings.getInstance()
                 

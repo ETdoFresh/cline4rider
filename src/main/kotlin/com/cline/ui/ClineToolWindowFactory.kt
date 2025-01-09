@@ -7,20 +7,20 @@ import com.intellij.ui.content.ContentFactory
 
 class ClineToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
-        com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater(
-            Runnable {
-                if (project.isDisposed) return@Runnable
-                
-                val clineToolWindow = ClineToolWindow(project)
-                val contentFactory = ContentFactory.getInstance()
-                val content = contentFactory.createContent(clineToolWindow.getContent(), "", false)
-                toolWindow.contentManager.addContent(content)
-
-                // Focus the input field when the tool window is shown
-                toolWindow.show { clineToolWindow.focusInput() }
-            },
-            com.intellij.openapi.application.ModalityState.NON_MODAL
-        )
+        val clineToolWindow = ClineToolWindow(project)
+        val contentFactory = ContentFactory.getInstance()
+        val content = contentFactory.createContent(clineToolWindow, "", false)
+        toolWindow.contentManager.addContent(content)
+        
+        // Set tool window properties
+        toolWindow.setToHideOnEmptyContent(false)
+        toolWindow.isShowStripeButton = true
+        
+        // Show the tool window and focus input
+        com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater({
+            if (project.isDisposed) return@invokeLater
+            toolWindow.show { clineToolWindow.focusInput() }
+        }, com.intellij.openapi.application.ModalityState.NON_MODAL)
     }
 
     override fun shouldBeAvailable(project: Project) = true
