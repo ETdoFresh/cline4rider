@@ -2,9 +2,7 @@
 .gradle/
 build/
 out/
-cline/node_modules/
-cline/out/
-cline/dist/
+cline/
 
 # Ignore Gradle GUI config
 gradle-app.setting
