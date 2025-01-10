@@ -1,33 +1,64 @@
 package com.etdofresh.cline4rider.api
 
-import com.etdofresh.cline4rider.model.ClineMessage
-import com.etdofresh.cline4rider.message.ClineMessageHandler
-import com.etdofresh.cline4rider.api.openai.OpenAIClient
-import com.etdofresh.cline4rider.api.anthropic.AnthropicClient
-import com.etdofresh.cline4rider.api.deepseek.DeepSeekClient
-import com.etdofresh.cline4rider.api.openrouter.OpenRouterClient
-import com.etdofresh.cline4rider.api.openaicompatible.OpenAICompatibleClient
+import com.etdofresh.cline4rider.model.*
+import com.google.gson.Gson
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.diagnostic.Logger
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.time.Duration
 
-class ApiProvider(private val messageHandler: ClineMessageHandler) {
-    private val clients = mutableMapOf<String, Any>()
-    
-    init {
-        registerClient("openai", OpenAIClient())
-        registerClient("anthropic", AnthropicClient())
-        registerClient("deepseek", DeepSeekClient())
-        registerClient("openrouter", OpenRouterClient())
-        registerClient("openaicompatible", OpenAICompatibleClient())
+@Service(Service.Level.PROJECT)
+class ApiProvider {
+    private val logger = Logger.getInstance(ApiProvider::class.java)
+    private val gson = Gson()
+    private val httpClient = HttpClient.newBuilder()
+        .connectTimeout(Duration.ofSeconds(30))
+        .build()
+
+    suspend fun sendMessage(message: String, apiKey: String): Result<ClineMessage> = withContext(Dispatchers.IO) {
+        try {
+            val chatRequest = ChatCompletionRequest(
+                model = DEFAULT_MODEL,
+                messages = listOf(ChatMessage(Role.USER.toString(), message))
+            )
+
+            val request = HttpRequest.newBuilder()
+                .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer $apiKey")
+                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(chatRequest)))
+                .build()
+
+            val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+            
+            if (response.statusCode() != 200) {
+                logger.error("API request failed with status ${response.statusCode()}: ${response.body()}")
+                return@withContext Result.failure(Exception("API request failed: ${response.statusCode()}"))
+            }
+
+            val completionResponse = gson.fromJson(response.body(), ChatCompletionResponse::class.java)
+            val assistantMessage = completionResponse.choices.firstOrNull()?.message
+                ?: throw Exception("No response message found")
+
+            val clineMessage = ClineMessage(
+                content = assistantMessage.content,
+                role = Role.ASSISTANT,
+                timestamp = System.currentTimeMillis()
+            )
+
+            Result.success(clineMessage)
+        } catch (e: Exception) {
+            logger.error("Error sending message to API", e)
+            Result.failure(e)
+        }
     }
 
-    fun registerClient(name: String, client: Any) {
-        clients[name] = client
-    }
-
-    fun getClient(name: String): Any? {
-        return clients[name]
-    }
-
-    fun processMessage(message: ClineMessage) {
-        // Message processing logic
+    companion object {
+        const val DEFAULT_MODEL = "gpt-3.5-turbo"
     }
 }
