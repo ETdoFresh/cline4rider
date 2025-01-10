@@ -1,46 +1,47 @@
-fun properties(key: String) = project.findProperty(key).toString()
-
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "1.8.22"
-    id("org.jetbrains.intellij") version "1.17.0"
+  id("java")
+  id("org.jetbrains.kotlin.jvm") version "1.9.25"
+  id("org.jetbrains.intellij") version "1.17.4"
 }
 
-group = properties("pluginGroup")
-version = properties("pluginVersion")
+group = "com.etdofresh"
+version = "1.0-SNAPSHOT"
 
 repositories {
-    mavenCentral()
+  mavenCentral()
 }
 
-kotlin {
-    jvmToolchain(properties("javaVersion").toInt())
-}
-
+// Configure Gradle IntelliJ Plugin
+// Read more: https://plugins.jetbrains.com/docs/intellij/tools-gradle-intellij-plugin.html
 intellij {
-    pluginName.set(properties("pluginName"))
-    type.set(properties("platformType"))
-    version.set(properties("platformVersion"))
-    updateSinceUntilBuild.set(false)
-    downloadSources.set(true)
-    plugins.set(properties("platformPlugins").split(',').map(String::trim).filter(String::isNotEmpty))
+  version.set("2024.1.7")
+  type.set("IC") // Target IDE Platform
+
+  plugins.set(listOf(/* Plugin Dependencies */))
 }
 
 tasks {
-    wrapper {
-        gradleVersion = properties("gradleVersion")
-    }
+  // Set the JVM compatibility versions
+  withType<JavaCompile> {
+    sourceCompatibility = "17"
+    targetCompatibility = "17"
+  }
+  withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    kotlinOptions.jvmTarget = "17"
+  }
 
-    patchPluginXml {
-        version.set(properties("pluginVersion"))
-        sinceBuild.set(properties("pluginSinceBuild"))
-    }
+  patchPluginXml {
+    sinceBuild.set("241")
+    untilBuild.set("243.*")
+  }
 
-    buildSearchableOptions {
-        enabled = false
-    }
-}
+  signPlugin {
+    certificateChain.set(System.getenv("CERTIFICATE_CHAIN"))
+    privateKey.set(System.getenv("PRIVATE_KEY"))
+    password.set(System.getenv("PRIVATE_KEY_PASSWORD"))
+  }
 
-dependencies {
-    implementation(kotlin("stdlib"))
-    implementation("com.google.code.gson:gson:2.10.1")
+  publishPlugin {
+    token.set(System.getenv("PUBLISH_TOKEN"))
+  }
 }

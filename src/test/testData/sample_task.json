@@ -1,7 +1,0 @@
-{
-    "title": "Sample task for testing",
-    "description": "This is a sample task used for testing serialization",
-    "createdAt": 1704812400000,
-    "completedAt": 1704812500000,
-    "status": "COMPLETED"
-}
