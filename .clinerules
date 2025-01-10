@@ -24,6 +24,11 @@
         <note>Uses Rider 2024.1.1 SDK (RD-241.14494.326)</note>
     </development_notes>
 
+    <gradle_rules>
+        <rule>Do not use --info flag unless specifically requested by user</rule>
+        <rule>After each task completion, run 'clean buildPlugin' to verify compilation</rule>
+    </gradle_rules>
+
     <shell_handling>
         <powershell>
             <command_separator>;</command_separator>
@@ -83,6 +88,7 @@
         <requirement>Stop all Gradle daemons before building</requirement>
         <requirement>Clean and rebuild the project</requirement>
         <requirement>Run IDE for testing</requirement>
-        <command>./gradlew --stop ; ./gradlew clean buildPlugin ; ./gradlew runIde -q</command>
+        <requirement>Verify compilation with clean buildPlugin</requirement>
+        <command>./gradlew --stop ; ./gradlew clean buildPlugin ; ./gradlew runIde -q ; ./gradlew clean buildPlugin</command>
     </task_completion_requirements>
 </custom_rules>

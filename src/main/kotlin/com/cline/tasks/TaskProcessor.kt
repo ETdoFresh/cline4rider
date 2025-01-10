@@ -1,6 +1,7 @@
 package com.cline.tasks
 
 import com.cline.model.ClineMessage
+import com.cline.model.Role
 import com.cline.task.model.ClineTask
 import com.intellij.openapi.project.Project
 import java.time.Instant
@@ -23,7 +24,7 @@ class TaskProcessor(private val project: Project) {
 
     fun addUserMessage(content: String) {
         messages.add(ClineMessage(
-            role = "user",
+            role = Role.USER,
             content = content,
             timestamp = System.currentTimeMillis()
         ))
@@ -31,7 +32,7 @@ class TaskProcessor(private val project: Project) {
 
     fun addAssistantMessage(content: String) {
         messages.add(ClineMessage(
-            role = "assistant",
+            role = Role.ASSISTANT,
             content = content,
             timestamp = System.currentTimeMillis()
         ))
@@ -39,7 +40,7 @@ class TaskProcessor(private val project: Project) {
 
     fun addSystemMessage(content: String) {
         messages.add(ClineMessage(
-            role = "system",
+            role = Role.SYSTEM,
             content = content,
             timestamp = System.currentTimeMillis()
         ))

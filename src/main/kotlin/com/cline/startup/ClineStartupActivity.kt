@@ -12,9 +12,9 @@ class ClineStartupActivity : StartupActivity.DumbAware {
             {
                 if (project.isDisposed) return@invokeLater
                 
-                val settings = ClineSettings.getInstance()
+                val settings = ClineSettings.getInstance(project)
                 
-                if (settings.apiKey.isEmpty()) {
+                if (settings.getApiKey().isNullOrEmpty()) {
                     ClineNotifier.notifyErrorWithAction(
                         project,
                         "Please configure your API key to start using Cline.",

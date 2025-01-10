@@ -1,6 +1,7 @@
 package com.cline.persistence
 
 import com.cline.model.ClineMessage
+import com.cline.model.Role
 import com.intellij.openapi.components.*
 import com.intellij.openapi.project.Project
 import com.intellij.util.xmlb.XmlSerializerUtil
@@ -46,7 +47,7 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         companion object {
             fun fromClineMessage(message: ClineMessage): SerializableMessage {
                 return SerializableMessage().apply {
-                    role = message.role
+                    role = message.role.toString()
                     content = message.content
                     timestamp = message.timestamp
                 }
@@ -55,7 +56,7 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
 
         fun toClineMessage(): ClineMessage {
             return ClineMessage(
-                role = role,
+                role = Role.valueOf(role.uppercase()),
                 content = content,
                 timestamp = timestamp
             )

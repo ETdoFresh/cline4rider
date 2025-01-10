@@ -1,7 +1,2 @@
-package com.cline.model
-
-data class ClineMessage(
-    val role: String,
-    val content: String,
-    val timestamp: Long
-)
+// This file is deprecated. ClineMessage is now defined in ApiModels.kt
+// This file will be deleted in a future commit.

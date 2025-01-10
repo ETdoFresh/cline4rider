@@ -5,11 +5,9 @@
     <vendor>etgarcia</vendor>
     <description>Cline - AI Assistant for Rider</description>
 
-    <depends>com.intellij.modules.platform</depends>
-    <depends>com.intellij.modules.rider</depends>
-
     <extensions defaultExtensionNs="com.intellij">
         <applicationService serviceImplementation="com.cline.settings.ClineSettings"/>
+        <projectService serviceImplementation="com.cline.api.ApiProvider"/>
         <projectService serviceImplementation="com.cline.ui.model.ChatViewModel"/>
         <projectService serviceImplementation="com.cline.persistence.ChatHistory"/>
         <projectService serviceImplementation="com.cline.tasks.TaskProcessor"/>

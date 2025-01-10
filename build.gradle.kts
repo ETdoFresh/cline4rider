@@ -1,47 +1,46 @@
+fun properties(key: String) = project.findProperty(key).toString()
+
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "1.9.20"
+    id("org.jetbrains.kotlin.jvm") version "1.8.22"
     id("org.jetbrains.intellij") version "1.17.0"
 }
 
-group = "com.cline"
-version = "1.0-SNAPSHOT"
+group = properties("pluginGroup")
+version = properties("pluginVersion")
 
 repositories {
     mavenCentral()
 }
 
-dependencies {
-    implementation("com.google.code.gson:gson:2.10.1")
-}
-
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(properties("javaVersion").toInt())
 }
 
 intellij {
-    version.set("2024.1.1")
-    type.set("RD")
-    instrumentCode.set(false)
+    pluginName.set(properties("pluginName"))
+    type.set(properties("platformType"))
+    version.set(properties("platformVersion"))
+    updateSinceUntilBuild.set(false)
+    downloadSources.set(true)
+    plugins.set(properties("platformPlugins").split(',').map(String::trim).filter(String::isNotEmpty))
 }
 
 tasks {
+    wrapper {
+        gradleVersion = properties("gradleVersion")
+    }
+
     patchPluginXml {
-        sinceBuild.set("241")
-        untilBuild.set("241.*")
+        version.set(properties("pluginVersion"))
+        sinceBuild.set(properties("pluginSinceBuild"))
     }
 
     buildSearchableOptions {
         enabled = false
     }
+}
 
-    withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
-        kotlinOptions {
-            jvmTarget = "17"
-        }
-    }
-
-    withType<JavaCompile> {
-        sourceCompatibility = "17"
-        targetCompatibility = "17"
-    }
+dependencies {
+    implementation(kotlin("stdlib"))
+    implementation("com.google.code.gson:gson:2.10.1")
 }

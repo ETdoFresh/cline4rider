@@ -1,32 +1,29 @@
 package com.cline.ui.model
 
-import com.cline.api.AnthropicClient
+import com.cline.api.ApiProvider
 import com.cline.model.ClineMessage
-import com.cline.persistence.ChatHistory
+import com.cline.model.Role
 import com.cline.settings.ClineSettings
-import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
-import com.intellij.openapi.components.service
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.*
+import java.util.concurrent.CopyOnWriteArrayList
 
 @Service(Service.Level.PROJECT)
-class ChatViewModel(private val project: Project) : Disposable {
-    private val settings = ClineSettings.getInstance()
-    private val client = AnthropicClient(settings)
-    private val chatHistory = ChatHistory.getInstance(project)
+class ChatViewModel(private val project: Project) {
+    private val logger = Logger.getInstance(ChatViewModel::class.java)
+    private val apiProvider = project.getService(ApiProvider::class.java)
+    private val settings = ClineSettings.getInstance(project)
+    private val messages = CopyOnWriteArrayList<ClineMessage>()
     private val messageListeners = mutableListOf<(List<ClineMessage>) -> Unit>()
     private val stateListeners = mutableListOf<(Boolean) -> Unit>()
     private var isProcessing = false
-    private val coroutineScope = CoroutineScope(Dispatchers.IO + Job())
-
-    companion object {
-        fun getInstance(project: Project): ChatViewModel = project.service()
-    }
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
     fun addMessageListener(listener: (List<ClineMessage>) -> Unit) {
         messageListeners.add(listener)
-        listener(chatHistory.getMessages())
+        listener(messages.toList())
     }
 
     fun addStateListener(listener: (Boolean) -> Unit) {
@@ -34,60 +31,67 @@ class ChatViewModel(private val project: Project) : Disposable {
         listener(isProcessing)
     }
 
-    fun getMessages(): List<ClineMessage> = chatHistory.getMessages()
-
-    fun clearMessages() {
-        chatHistory.clearMessages()
-        notifyMessageListeners()
-    }
-
     fun sendMessage(content: String) {
-        val userMessage = ClineMessage(
-            role = "user",
-            content = content,
-            timestamp = System.currentTimeMillis()
-        )
-        chatHistory.addMessage(userMessage)
+        if (content.isBlank() || isProcessing) return
+
+        val userMessage = ClineMessage(content, Role.USER)
+        messages.add(userMessage)
         notifyMessageListeners()
 
-        setProcessing(true)
+        isProcessing = true
+        notifyStateListeners()
+
         coroutineScope.launch {
             try {
-                val response = client.sendMessage(content)
-                val assistantMessage = ClineMessage(
-                    role = "assistant",
-                    content = response,
-                    timestamp = System.currentTimeMillis()
+                val apiKey = settings.getApiKey()
+                if (apiKey.isNullOrBlank()) {
+                    handleError("API key not configured. Please set it in Settings | Tools | Cline.")
+                    return@launch
+                }
+
+                val result = apiProvider.sendMessage(content, apiKey)
+                result.fold(
+                    onSuccess = { response ->
+                        messages.add(response)
+                        notifyMessageListeners()
+                    },
+                    onFailure = { error ->
+                        handleError("Failed to get response: ${error.message}")
+                    }
                 )
-                chatHistory.addMessage(assistantMessage)
-                notifyMessageListeners()
             } catch (e: Exception) {
-                val errorMessage = ClineMessage(
-                    role = "system",
-                    content = "Error: ${e.message}",
-                    timestamp = System.currentTimeMillis()
-                )
-                chatHistory.addMessage(errorMessage)
-                notifyMessageListeners()
+                handleError("Error processing message: ${e.message}")
             } finally {
-                setProcessing(false)
+                isProcessing = false
+                notifyStateListeners()
             }
         }
     }
 
+    private fun handleError(errorMessage: String) {
+        logger.error(errorMessage)
+        messages.add(ClineMessage(errorMessage, Role.SYSTEM))
+        notifyMessageListeners()
+    }
+
+    fun clearMessages() {
+        messages.clear()
+        notifyMessageListeners()
+    }
+
+    fun getMessages(): List<ClineMessage> = messages.toList()
+
     private fun notifyMessageListeners() {
-        val currentMessages = chatHistory.getMessages()
-        messageListeners.forEach { it(currentMessages) }
+        messageListeners.forEach { it(messages.toList()) }
     }
 
-    private fun setProcessing(processing: Boolean) {
-        isProcessing = processing
-        stateListeners.forEach { it(processing) }
+    private fun notifyStateListeners() {
+        stateListeners.forEach { it(isProcessing) }
     }
 
-    override fun dispose() {
-        coroutineScope.cancel()
-        messageListeners.clear()
-        stateListeners.clear()
+    companion object {
+        @JvmStatic
+        fun getInstance(project: Project): ChatViewModel =
+            project.getService(ChatViewModel::class.java)
     }
 }
