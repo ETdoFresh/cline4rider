@@ -1,7 +1,7 @@
 package com.etdofresh.cline4rider.persistence
 
 import com.etdofresh.cline4rider.model.ClineMessage
-import com.etdofresh.cline4rider.model.Role
+import com.etdofresh.cline4rider.model.ClineMessage.Role
 import com.intellij.openapi.components.*
 import com.intellij.openapi.project.Project
 import com.intellij.util.xmlb.XmlSerializerUtil
@@ -56,7 +56,7 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
 
         fun toClineMessage(): ClineMessage {
             return ClineMessage(
-                role = Role.valueOf(role.uppercase()),
+                role = ClineMessage.Role.valueOf(role.uppercase()),
                 content = content,
                 timestamp = timestamp
             )

@@ -2,7 +2,7 @@ package com.etdofresh.cline4rider.ui.model
 
 import com.etdofresh.cline4rider.api.ApiProvider
 import com.etdofresh.cline4rider.model.ClineMessage
-import com.etdofresh.cline4rider.model.Role
+import com.etdofresh.cline4rider.model.ClineMessage.Role
 import com.etdofresh.cline4rider.settings.ClineSettings
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
@@ -34,7 +34,7 @@ class ChatViewModel(private val project: Project) {
     fun sendMessage(content: String) {
         if (content.isBlank() || isProcessing) return
 
-        val userMessage = ClineMessage(content, Role.USER)
+        val userMessage = ClineMessage(Role.USER, content, System.currentTimeMillis())
         messages.add(userMessage)
         notifyMessageListeners()
 
@@ -70,7 +70,7 @@ class ChatViewModel(private val project: Project) {
 
     private fun handleError(errorMessage: String) {
         logger.error(errorMessage)
-        messages.add(ClineMessage(errorMessage, Role.SYSTEM))
+        messages.add(ClineMessage(Role.SYSTEM, errorMessage, System.currentTimeMillis()))
         notifyMessageListeners()
     }
 

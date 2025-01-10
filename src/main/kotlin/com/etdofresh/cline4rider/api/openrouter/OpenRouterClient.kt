@@ -1,14 +1,21 @@
 package com.etdofresh.cline4rider.api.openrouter
 
 import com.etdofresh.cline4rider.model.ClineMessage
-import com.etdofresh.cline4rider.api.openrouter.OpenRouterModels.ChatCompletionRequest
-import com.etdofresh.cline4rider.api.openrouter.OpenRouterModels.ChatCompletionResponse
-import com.etdofresh.cline4rider.api.openrouter.OpenRouterModels.Message
+import com.etdofresh.cline4rider.api.openrouter.ChatCompletionRequest
+import com.etdofresh.cline4rider.api.openrouter.ChatCompletionResponse
+import com.etdofresh.cline4rider.api.openrouter.Message
 import com.etdofresh.cline4rider.api.openrouter.OpenRouterException
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+
+private val json = Json { prettyPrint = true }
+
+private fun Any.toJson(): String = json.encodeToString(this)
 
 class OpenRouterClient {
     private val client = OkHttpClient()

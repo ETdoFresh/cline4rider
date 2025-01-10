@@ -1,5 +1,7 @@
 package com.etdofresh.cline4rider.model
 
+import com.etdofresh.cline4rider.model.ClineMessage
+
 data class ChatCompletionRequest(
     val model: String,
     val messages: List<ChatMessage>,
@@ -12,7 +14,7 @@ data class ChatCompletionRequest(
 )
 
 data class ChatMessage(
-    val role: Role,
+    val role: ClineMessage.Role,
     val content: String
 )
 
@@ -32,9 +34,3 @@ data class ChatUsage(
     val completionTokens: Int,
     val totalTokens: Int
 )
-
-enum class Role {
-    USER,
-    ASSISTANT,
-    SYSTEM
-}

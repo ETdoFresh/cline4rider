@@ -1,4 +1,4 @@
-package com.cline.utils
+package com.etdofresh.cline4rider.utils
 
 import com.intellij.notification.Notification
 import com.intellij.notification.NotificationAction

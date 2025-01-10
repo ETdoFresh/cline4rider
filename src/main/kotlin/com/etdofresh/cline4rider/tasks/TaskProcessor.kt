@@ -1,7 +1,6 @@
 package com.etdofresh.cline4rider.tasks
 
 import com.etdofresh.cline4rider.model.ClineMessage
-import com.etdofresh.cline4rider.model.Role
 import com.etdofresh.cline4rider.task.model.ClineTask
 import com.intellij.openapi.project.Project
 import java.time.Instant
@@ -24,7 +23,7 @@ class TaskProcessor(private val project: Project) {
 
     fun addUserMessage(content: String) {
         messages.add(ClineMessage(
-            role = Role.USER,
+            role = ClineMessage.Role.USER,
             content = content,
             timestamp = System.currentTimeMillis()
         ))
@@ -32,7 +31,7 @@ class TaskProcessor(private val project: Project) {
 
     fun addAssistantMessage(content: String) {
         messages.add(ClineMessage(
-            role = Role.ASSISTANT,
+            role = ClineMessage.Role.ASSISTANT,
             content = content,
             timestamp = System.currentTimeMillis()
         ))
@@ -40,7 +39,7 @@ class TaskProcessor(private val project: Project) {
 
     fun addSystemMessage(content: String) {
         messages.add(ClineMessage(
-            role = Role.SYSTEM,
+            role = ClineMessage.Role.SYSTEM,
             content = content,
             timestamp = System.currentTimeMillis()
         ))

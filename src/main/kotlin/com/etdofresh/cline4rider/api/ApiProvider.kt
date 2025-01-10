@@ -1,6 +1,10 @@
 package com.etdofresh.cline4rider.api
 
-import com.etdofresh.cline4rider.model.*
+import com.etdofresh.cline4rider.model.ClineMessage
+import com.etdofresh.cline4rider.model.ChatCompletionRequest
+import com.etdofresh.cline4rider.model.ChatCompletionResponse
+import com.etdofresh.cline4rider.model.ChatMessage
+import com.etdofresh.cline4rider.model.ClineMessage.Role
 import com.google.gson.Gson
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
@@ -24,7 +28,7 @@ class ApiProvider {
         try {
             val chatRequest = ChatCompletionRequest(
                 model = DEFAULT_MODEL,
-                messages = listOf(ChatMessage(Role.USER.toString(), message))
+                messages = listOf(ChatMessage(Role.USER, message))
             )
 
             val request = HttpRequest.newBuilder()

@@ -2,6 +2,7 @@ package com.etdofresh.cline4rider.task
 
 import com.etdofresh.cline4rider.task.model.ClineTask
 import com.etdofresh.cline4rider.task.persistence.TaskStorage
+import com.etdofresh.cline4rider.model.ClineMessage
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project

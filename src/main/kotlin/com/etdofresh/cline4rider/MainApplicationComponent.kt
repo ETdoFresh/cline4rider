@@ -1,5 +1,8 @@
 package com.etdofresh.cline4rider
 
+import com.etdofresh.cline4rider.message.ClineMessageHandler
+import com.etdofresh.cline4rider.message.TaskRequestListener
+import com.etdofresh.cline4rider.model.ClineMessage
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.startup.StartupActivity
@@ -11,7 +14,7 @@ class MainApplicationComponent(private val project: Project) : StartupActivity {
         project.messageBus.connect().subscribe(
             ClineMessageHandler.TASK_REQUEST,
             object : TaskRequestListener {
-                override fun onTaskRequest(message: com.etdofresh.cline4rider.model.ClineMessage) {
+                override fun onTaskRequest(message: ClineMessage) {
                     // Handle task request
                 }
             }

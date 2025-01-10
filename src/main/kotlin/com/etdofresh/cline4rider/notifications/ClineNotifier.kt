@@ -1,8 +1,9 @@
-package com.etdofresh.cline4rider.notifications
+                package com.etdofresh.cline4rider.notifications
 
 import com.intellij.notification.NotificationGroupManager
 import com.intellij.notification.NotificationType
 import com.intellij.openapi.project.Project
+import com.etdofresh.cline4rider.utils.SettingsHelper
 
 object ClineNotifier {
     private const val GROUP_ID = "Cline Notifications"

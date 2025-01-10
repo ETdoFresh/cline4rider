@@ -1,14 +1,21 @@
 package com.etdofresh.cline4rider.api.openaicompatible
 
 import com.etdofresh.cline4rider.model.ClineMessage
-import com.etdofresh.cline4rider.api.openaicompatible.OpenAICompatibleModels.ChatCompletionRequest
-import com.etdofresh.cline4rider.api.openaicompatible.OpenAICompatibleModels.ChatCompletionResponse
-import com.etdofresh.cline4rider.api.openaicompatible.OpenAICompatibleModels.Message
+import com.etdofresh.cline4rider.api.openaicompatible.ChatCompletionRequest
+import com.etdofresh.cline4rider.api.openaicompatible.ChatCompletionResponse
+import com.etdofresh.cline4rider.api.openaicompatible.Message
 import com.etdofresh.cline4rider.api.openaicompatible.OpenAICompatibleException
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+
+private val json = Json { prettyPrint = true }
+
+private fun Any.toJson(): String = json.encodeToString(this)
 
 class OpenAICompatibleClient(private val baseUrl: String) {
     private val client = OkHttpClient()

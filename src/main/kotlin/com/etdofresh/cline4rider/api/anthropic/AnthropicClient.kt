@@ -1,13 +1,19 @@
 package com.etdofresh.cline4rider.api.anthropic
 
 import com.etdofresh.cline4rider.model.ClineMessage
-import com.etdofresh.cline4rider.api.anthropic.AnthropicModels.ChatCompletionRequest
-import com.etdofresh.cline4rider.api.anthropic.AnthropicModels.ChatCompletionResponse
+import com.etdofresh.cline4rider.api.anthropic.ChatCompletionRequest
 import com.etdofresh.cline4rider.api.anthropic.AnthropicException
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+
+private val json = Json { prettyPrint = true }
+
+private fun Any.toJson(): String = json.encodeToString(this)
 
 class AnthropicClient {
     private val client = OkHttpClient()

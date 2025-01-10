@@ -1,14 +1,21 @@
 package com.etdofresh.cline4rider.api.deepseek
 
 import com.etdofresh.cline4rider.model.ClineMessage
-import com.etdofresh.cline4rider.api.deepseek.DeepSeekModels.ChatCompletionRequest
-import com.etdofresh.cline4rider.api.deepseek.DeepSeekModels.ChatCompletionResponse
-import com.etdofresh.cline4rider.api.deepseek.DeepSeekModels.Message
+import com.etdofresh.cline4rider.api.deepseek.ChatCompletionRequest
+import com.etdofresh.cline4rider.api.deepseek.ChatCompletionResponse
+import com.etdofresh.cline4rider.api.deepseek.Message
 import com.etdofresh.cline4rider.api.deepseek.DeepSeekException
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+
+private val json = Json { prettyPrint = true }
+
+private fun Any.toJson(): String = json.encodeToString(this)
 
 class DeepSeekClient {
     private val client = OkHttpClient()
