@@ -25,6 +25,16 @@
   <!-- Extension points defined by the plugin.
        Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
   <extensions defaultExtensionNs="com.intellij">
-
+    <!-- Application-level service for Cline core functionality -->
+    <applicationService serviceImplementation="com.etdofresh.cline4rider.ClineApplicationService"/>
+    
+    <!-- Project-level service for per-project state -->
+    <projectService serviceImplementation="com.etdofresh.cline4rider.ClineProjectService"/>
   </extensions>
+
+  <applicationListeners>
+    <!-- Ensure proper lifecycle management -->
+    <listener class="com.etdofresh.cline4rider.ClineApplicationListener"
+              topic="com.intellij.openapi.application.ApplicationListener"/>
+  </applicationListeners>
 </idea-plugin>

@@ -16,6 +16,7 @@ repositories {
 intellij {
   version.set("2024.1.7")
   type.set("IC") // Target IDE Platform
+  instrumentCode.set(false) // Disable instrumentation to avoid JDK path issues
 
   plugins.set(listOf(/* Plugin Dependencies */))
 }
