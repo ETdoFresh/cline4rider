@@ -1,85 +1,62 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <idea-plugin>
-    <id>com.cline.rider</id>
+    <id>com.cline</id>
     <name>Cline</name>
-    <version>1.0.0</version>
-    <vendor email="support@cline.dev" url="https://cline.dev">Cline</vendor>
+    <vendor>etgarcia</vendor>
+    <description>Cline - AI Assistant for Rider</description>
 
-    <description><![CDATA[
-        Cline is your AI-powered coding assistant that helps you with complex software development tasks.
-        It can handle everything from simple code snippets to complex multi-step projects.
-    ]]></description>
-
-    <change-notes><![CDATA[
-        Initial release of Cline for Rider.
-    ]]></change-notes>
-
+    <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.modules.rider</depends>
 
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Tool Windows -->
-        <toolWindow id="Cline"
-                    icon="/icons/clineToolWindow.svg"
-                    anchor="right"
-                    secondary="false"
-                    canCloseContents="false"
-                    factoryClass="com.cline.ui.ClineToolWindowFactory"/>
-        
-        <toolWindow id="Tasks"
-                    icon="/icons/clineToolWindow.svg"
-                    anchor="right"
-                    secondary="true"
-                    canCloseContents="false"
-                    factoryClass="com.cline.task.ui.TaskToolWindowFactory"/>
-
-        <!-- Services -->
+        <applicationService serviceImplementation="com.cline.settings.ClineSettings"/>
+        <projectService serviceImplementation="com.cline.ui.model.ChatViewModel"/>
+        <projectService serviceImplementation="com.cline.persistence.ChatHistory"/>
+        <projectService serviceImplementation="com.cline.tasks.TaskProcessor"/>
         <projectService serviceImplementation="com.cline.task.TaskManager"/>
         <projectService serviceImplementation="com.cline.task.persistence.TaskStorage"/>
-        <applicationService serviceImplementation="com.cline.settings.ClineSettings"/>
-        <projectService serviceImplementation="com.cline.ui.model.ChatViewModel"
-                       serviceInterface="com.cline.ui.model.ChatViewModel"/>
-        <projectService serviceImplementation="com.cline.persistence.ChatHistory"
-                       serviceInterface="com.cline.persistence.ChatHistory"/>
-
-        <!-- Notifications -->
-        <notificationGroup id="Cline Notifications"
-                          displayType="BALLOON"
-                          key="notification.group.cline"/>
-
-        <!-- Settings -->
+        
+        <toolWindow id="Cline"
+                    secondary="true"
+                    icon="AllIcons.General.Modified"
+                    anchor="right"
+                    factoryClass="com.cline.ui.ClineToolWindowFactory"/>
+                    
+        <toolWindow id="Cline Tasks"
+                    secondary="true"
+                    icon="AllIcons.General.Note"
+                    anchor="right"
+                    factoryClass="com.cline.task.ui.TaskToolWindowFactory"/>
+                    
         <applicationConfigurable
                 parentId="tools"
                 instance="com.cline.settings.ClineSettingsConfigurable"
                 id="com.cline.settings.ClineSettingsConfigurable"
                 displayName="Cline"/>
-
-        <!-- Startup Activities -->
-        <postStartupActivity implementation="com.cline.startup.ClineStartupActivity"/>
     </extensions>
 
     <actions>
-        <action id="Cline.OpenToolWindow"
-                class="com.cline.actions.OpenClineAction"
-                text="Open Cline"
-                description="Open Cline AI Assistant">
+        <action id="com.cline.actions.ClearChatAction"
+                class="com.cline.actions.ClearChatAction"
+                text="Clear Chat"
+                description="Clear the chat history">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
-            <keyboard-shortcut keymap="$default" first-keystroke="control alt C"/>
-            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta alt C"/>
-            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="meta alt C"/>
         </action>
         
-        <action id="Cline.OpenTasksWindow"
+        <action id="com.cline.actions.OpenTasksAction"
                 class="com.cline.actions.OpenTasksAction"
                 text="Open Cline Tasks"
-                description="Open Cline Tasks Window">
+                description="Open the Cline Tasks window">
             <add-to-group group-id="ToolsMenu" anchor="last"/>
-            <keyboard-shortcut keymap="$default" first-keystroke="control alt T"/>
-            <keyboard-shortcut keymap="Mac OS X" first-keystroke="meta alt T"/>
-            <keyboard-shortcut keymap="Mac OS X 10.5+" first-keystroke="meta alt T"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt T"/>
+        </action>
+
+        <action id="com.cline.actions.NewTaskAction"
+                class="com.cline.actions.NewTaskAction"
+                text="New Cline Task"
+                description="Create a new Cline task">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt N"/>
         </action>
     </actions>
-
-    <applicationListeners>
-        <!-- Add your application listeners here -->
-    </applicationListeners>
 </idea-plugin>

@@ -2,19 +2,34 @@ package com.cline.persistence
 
 import com.cline.model.ClineMessage
 import com.intellij.openapi.components.*
+import com.intellij.openapi.project.Project
 import com.intellij.util.xmlb.XmlSerializerUtil
+import com.intellij.util.xmlb.annotations.Tag
+import com.intellij.util.xmlb.annotations.XCollection
 
 @State(
-    name = "ClineChatHistory",
-    storages = [Storage("cline_chat_history.xml")]
+    name = "ChatHistory",
+    storages = [Storage("cline-chat-history.xml")]
 )
-@Service(Service.Level.PROJECT)
 class ChatHistory : PersistentStateComponent<ChatHistory> {
-    // Public properties for serialization
-    var messages: MutableList<SerializableMessage> = mutableListOf()
-        private set
-    var recentTasks: MutableList<SerializableMessage> = mutableListOf()
-        private set
+    @XCollection
+    private var messages: MutableList<SerializableMessage> = mutableListOf()
+
+    companion object {
+        fun getInstance(project: Project): ChatHistory = project.service()
+    }
+
+    fun addMessage(message: ClineMessage) {
+        messages.add(SerializableMessage.fromClineMessage(message))
+    }
+
+    fun getMessages(): List<ClineMessage> {
+        return messages.map { it.toClineMessage() }
+    }
+
+    fun clearMessages() {
+        messages.clear()
+    }
 
     override fun getState(): ChatHistory = this
 
@@ -22,68 +37,28 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         XmlSerializerUtil.copyBean(state, this)
     }
 
-    fun addMessage(message: ClineMessage) {
-        messages.add(SerializableMessage.fromClineMessage(message))
-        if (messages.size > MAX_MESSAGES) {
-            messages.removeAt(0)
-        }
-    }
+    @Tag("message")
+    class SerializableMessage {
+        var role: String = ""
+        var content: String = ""
+        var timestamp: Long = 0
 
-    fun addRecentTask(message: ClineMessage) {
-        val taskId = message.metadata["taskId"]
-        if (taskId != null) {
-            val existingIndex = recentTasks.indexOfFirst { 
-                it.metadata["taskId"] == taskId 
-            }
-            
-            if (existingIndex != -1) {
-                recentTasks[existingIndex] = SerializableMessage.fromClineMessage(message)
-            } else {
-                recentTasks.add(0, SerializableMessage.fromClineMessage(message))
-                if (recentTasks.size > MAX_RECENT_TASKS) {
-                    recentTasks.removeAt(recentTasks.size - 1)
+        companion object {
+            fun fromClineMessage(message: ClineMessage): SerializableMessage {
+                return SerializableMessage().apply {
+                    role = message.role
+                    content = message.content
+                    timestamp = message.timestamp
                 }
             }
-        } else {
-            recentTasks.add(0, SerializableMessage.fromClineMessage(message))
-            if (recentTasks.size > MAX_RECENT_TASKS) {
-                recentTasks.removeAt(recentTasks.size - 1)
-            }
+        }
+
+        fun toClineMessage(): ClineMessage {
+            return ClineMessage(
+                role = role,
+                content = content,
+                timestamp = timestamp
+            )
         }
     }
-
-    fun getAllMessages(): List<ClineMessage> = messages.map { it.toClineMessage() }
-    fun getAllRecentTasks(): List<ClineMessage> = recentTasks.map { it.toClineMessage() }
-
-    fun clear() {
-        messages.clear()
-        recentTasks.clear()
-    }
-
-    companion object {
-        private const val MAX_MESSAGES = 100
-        private const val MAX_RECENT_TASKS = 10
-    }
-}
-
-data class SerializableMessage(
-    var type: String = "",
-    var content: String = "",
-    var metadata: Map<String, String> = emptyMap()
-) {
-    companion object {
-        fun fromClineMessage(message: ClineMessage): SerializableMessage =
-            SerializableMessage(
-                type = message.type.name,
-                content = message.content,
-                metadata = message.metadata
-            )
-    }
-
-    fun toClineMessage(): ClineMessage =
-        ClineMessage(
-            type = com.cline.model.MessageType.valueOf(type),
-            content = content,
-            metadata = metadata
-        )
 }

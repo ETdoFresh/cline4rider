@@ -1,29 +1,46 @@
 package com.cline.actions
 
-import com.cline.ui.ClineToolWindow
+import com.cline.task.TaskManager
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
-import com.intellij.openapi.actionSystem.ActionUpdateThread
-import com.intellij.openapi.project.DumbAware
+import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.wm.ToolWindowManager
 
-class NewTaskAction : AnAction(), DumbAware {
-    override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT
-
+class NewTaskAction : AnAction() {
     override fun actionPerformed(e: AnActionEvent) {
         val project = e.project ?: return
-        
-        // Focus the Cline tool window and input area
-        val toolWindow = ToolWindowManager.getInstance(project).getToolWindow("Cline")
-        toolWindow?.show {
-            // Get the content and focus the input
-            toolWindow.contentManager.selectedContent?.let { content ->
-                (content.component as? ClineToolWindow)?.focusInput()
+        val taskManager = TaskManager.getInstance(project)
+
+        val title = Messages.showInputDialog(
+            project,
+            "Enter task title:",
+            "New Task",
+            Messages.getQuestionIcon()
+        ) ?: return
+
+        val description = Messages.showMultilineInputDialog(
+            project,
+            "Enter task description:",
+            "New Task",
+            "",
+            Messages.getQuestionIcon(),
+            null
+        ) ?: return
+
+        if (title.isNotEmpty()) {
+            taskManager.addTask(title, description)
+
+            // Open the Tasks window if it's not already visible
+            val toolWindowManager = ToolWindowManager.getInstance(project)
+            val toolWindow = toolWindowManager.getToolWindow("Cline Tasks")
+            if (toolWindow != null && !toolWindow.isVisible) {
+                toolWindow.show()
             }
         }
     }
 
     override fun update(e: AnActionEvent) {
-        e.presentation.isEnabled = e.project != null
+        val project = e.project
+        e.presentation.isEnabled = project != null
     }
 }
