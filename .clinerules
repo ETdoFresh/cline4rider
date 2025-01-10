@@ -26,6 +26,7 @@
 
     <gradle_rules>
         <rule>Do not use --info flag unless specifically requested by user</rule>
+        <rule>Do not use --debug flag unless specifically requested by user</rule>
         <rule>After each task completion, run 'clean buildPlugin' to verify compilation</rule>
         <rule>Do not modify build.gradle.kts or gradle.properties unless specifically requested by user</rule>
     </gradle_rules>
@@ -72,8 +73,8 @@
             <script>./gradlew --stop</script>
         </command>
         <command>
-            <name>Build with Debug</name>
-            <script>./gradlew buildPlugin --debug</script>
+            <name>Build Plugin</name>
+            <script>./gradlew buildPlugin</script>
         </command>
         <command>
             <name>Git Add and Commit</name>

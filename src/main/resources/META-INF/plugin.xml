@@ -5,6 +5,10 @@
     <vendor>etgarcia</vendor>
     <description>Cline - AI Assistant for Rider</description>
 
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.rider</depends>
+    <depends>com.intellij.modules.ultimate</depends>
+
     <extensions defaultExtensionNs="com.intellij">
         <applicationService serviceImplementation="com.cline.settings.ClineSettings"/>
         <projectService serviceImplementation="com.cline.api.ApiProvider"/>
@@ -16,13 +20,13 @@
         
         <toolWindow id="Cline"
                     secondary="true"
-                    icon="AllIcons.General.Modified"
+                    icon="/icons/clineToolWindow.svg"
                     anchor="right"
                     factoryClass="com.cline.ui.ClineToolWindowFactory"/>
                     
         <toolWindow id="Cline Tasks"
                     secondary="true"
-                    icon="AllIcons.General.Note"
+                    icon="/icons/clineToolWindow.svg"
                     anchor="right"
                     factoryClass="com.cline.task.ui.TaskToolWindowFactory"/>
                     
