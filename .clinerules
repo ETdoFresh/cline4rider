@@ -27,6 +27,7 @@
     <gradle_rules>
         <rule>Do not use --info flag unless specifically requested by user</rule>
         <rule>After each task completion, run 'clean buildPlugin' to verify compilation</rule>
+        <rule>Do not modify build.gradle.kts or gradle.properties unless specifically requested by user</rule>
     </gradle_rules>
 
     <shell_handling>
