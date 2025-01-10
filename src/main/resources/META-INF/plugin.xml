@@ -37,4 +37,12 @@
     <listener class="com.etdofresh.cline4rider.ClineApplicationListener"
               topic="com.intellij.openapi.application.ApplicationListener"/>
   </applicationListeners>
+
+  <!-- Tool Window registration -->
+  <extensions defaultExtensionNs="com.intellij">
+    <toolWindow id="Cline"
+                anchor="right"
+                factoryClass="com.etdofresh.cline4rider.ui.ClineToolWindowFactory"
+                icon="META-INF/pluginIcon.svg"/>
+  </extensions>
 </idea-plugin>
