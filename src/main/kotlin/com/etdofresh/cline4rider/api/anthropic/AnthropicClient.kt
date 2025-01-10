@@ -1,8 +1,8 @@
 package com.etdofresh.cline4rider.api.anthropic
 
 import com.etdofresh.cline4rider.model.ClineMessage
-import com.etdofresh.cline4rider.api.anthropic.AnthropicModels.CompleteRequest
-import com.etdofresh.cline4rider.api.anthropic.AnthropicModels.CompleteResponse
+import com.etdofresh.cline4rider.api.anthropic.AnthropicModels.ChatCompletionRequest
+import com.etdofresh.cline4rider.api.anthropic.AnthropicModels.ChatCompletionResponse
 import com.etdofresh.cline4rider.api.anthropic.AnthropicException
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -16,9 +16,9 @@ class AnthropicClient {
 
     fun sendMessage(message: ClineMessage): String {
         try {
-            val request = CompleteRequest(
-                prompt = message.content,
+            val request = ChatCompletionRequest(
                 model = "claude-2",
+                prompt = "\n\nHuman: ${message.content}\n\nAssistant:",
                 max_tokens_to_sample = 1000,
                 temperature = 0.7
             )

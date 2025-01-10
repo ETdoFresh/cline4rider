@@ -3,9 +3,9 @@ package com.etdofresh.cline4rider.api.anthropic
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class CompleteRequest(
-    val prompt: String,
+data class ChatCompletionRequest(
     val model: String,
+    val prompt: String,
     val max_tokens_to_sample: Int,
     val temperature: Double = 0.7,
     val top_p: Double? = null,
@@ -13,12 +13,10 @@ data class CompleteRequest(
 )
 
 @Serializable
-data class CompleteResponse(
+data class ChatCompletionResponse(
     val completion: String,
     val stop_reason: String,
-    val model: String,
-    val stop: String? = null,
-    val log_id: String
+    val model: String
 )
 
 @Serializable
