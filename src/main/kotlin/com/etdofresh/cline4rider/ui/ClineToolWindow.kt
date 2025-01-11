@@ -40,28 +40,19 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         background = Color(45, 45, 45)
         maximumSize = Dimension(Int.MAX_VALUE, Int.MAX_VALUE)
     }
-    private val inputArea = JTextArea(2, 50).apply {
+    private val inputArea = JTextArea().apply {
+        rows = 3
+        columns = 50
         border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
         background = Color(51, 51, 51)
         foreground = Color(220, 220, 220)
         caretColor = Color(220, 220, 220)
+        isEditable = true
+        isEnabled = true
+        isFocusable = true
         
-        inputMap.put(KeyStroke.getKeyStroke("ENTER"), "send")
-        inputMap.put(KeyStroke.getKeyStroke("shift ENTER"), "newline")
-        actionMap.put("send", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) {
-                val message = text.trim()
-                if (message.isNotEmpty() && !viewModel.isProcessing()) {
-                    sendMessage(message)
-                    text = ""
-                }
-            }
-        })
-        actionMap.put("newline", object : AbstractAction() {
-            override fun actionPerformed(e: java.awt.event.ActionEvent) {
-                insert("\n", caretPosition)
-            }
-        })
+        // Debug
+        println("Creating input area with editable=${isEditable}, enabled=${isEnabled}, focusable=${isFocusable}")
     }
     private val sendButton = JButton("Send").apply {
         background = Color(60, 60, 60)
@@ -97,7 +88,15 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
     }
 
     private fun createMainChatPanel(): JPanel {
-        val panel = JPanel(BorderLayout())
+        // Create main panel with BorderLayout
+        val mainPanel = JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+        }
+        
+        // Create chat area panel that will contain messages
+        val chatAreaPanel = JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+        }
         
         // Enable smooth scrolling
         UIManager.put("ScrollBar.smoothScrolling", true)
@@ -107,43 +106,109 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
             verticalScrollBar.unitIncrement = 16
             verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
             horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
-            preferredSize = Dimension(Int.MAX_VALUE, JBUI.scale(200))
         }
         
+        // Add scroll pane to chat area
+        chatAreaPanel.add(scrollPane, BorderLayout.CENTER)
+        
+        // Create input panel with fixed height
         val inputPanel = createInputPanel()
         
-        panel.add(scrollPane, BorderLayout.CENTER)
-        panel.add(inputPanel, BorderLayout.SOUTH)
+        // Add components to main panel
+        mainPanel.add(chatAreaPanel, BorderLayout.CENTER)
+        mainPanel.add(inputPanel, BorderLayout.SOUTH)
         
-        return panel
+        return mainPanel
     }
 
     private fun createInputPanel(): JPanel {
-        val inputPanel = JPanel(BorderLayout()).apply {
-            background = Color(45, 45, 45)
+        // Create a new text area for this specific panel
+        val localInputArea = JTextArea().apply {
+            rows = 3
+            columns = 50
+            background = Color(51, 51, 51)
+            foreground = Color(220, 220, 220)
+            caretColor = Color(220, 220, 220)
+            isEditable = true
+            isEnabled = true
+            isFocusable = true
             border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+            println("Created new input area: editable=$isEditable, enabled=$isEnabled, focusable=$isFocusable")
         }
-        
-        val inputScrollPane = JBScrollPane(inputArea).apply {
-            border = BorderFactory.createLineBorder(Color(60, 60, 60))
-            preferredSize = Dimension(0, JBUI.scale(40))
-            minimumSize = Dimension(0, JBUI.scale(40))
-        }
-        
-        inputPanel.add(inputScrollPane, BorderLayout.CENTER)
 
+        // Create the scroll pane with the new text area
+        val inputScrollPane = JBScrollPane(localInputArea).apply {
+            border = BorderFactory.createLineBorder(Color(60, 60, 60))
+            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+        }
+
+        // Create button panel
         val buttonPanel = JPanel().apply {
             background = Color(45, 45, 45)
             layout = BoxLayout(this, BoxLayout.X_AXIS)
             border = BorderFactory.createEmptyBorder(5, 0, 0, 0)
         }
-        
+
+        // Create local buttons
+        val localSendButton = JButton("Send").apply {
+            background = Color(60, 60, 60)
+            foreground = Color(220, 220, 220)
+            isEnabled = true
+        }
+
+        val localClearButton = JButton("Clear").apply {
+            background = Color(60, 60, 60)
+            foreground = Color(220, 220, 220)
+            isEnabled = true
+        }
+
+        // Add buttons to panel
         buttonPanel.add(Box.createHorizontalGlue())
-        buttonPanel.add(clearButton)
+        buttonPanel.add(localClearButton)
         buttonPanel.add(Box.createHorizontalStrut(5))
-        buttonPanel.add(sendButton)
-        
+        buttonPanel.add(localSendButton)
+
+        // Create main panel
+        val inputPanel = JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        }
+
+        // Add components to main panel
+        inputPanel.add(inputScrollPane, BorderLayout.CENTER)
         inputPanel.add(buttonPanel, BorderLayout.SOUTH)
+
+        // Set up input area key bindings
+        localInputArea.inputMap.put(KeyStroke.getKeyStroke("ENTER"), "send")
+        localInputArea.inputMap.put(KeyStroke.getKeyStroke("shift ENTER"), "newline")
+        localInputArea.actionMap.put("send", object : AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent) {
+                val message = localInputArea.text.trim()
+                if (message.isNotEmpty() && !viewModel.isProcessing()) {
+                    sendMessage(message)
+                    localInputArea.text = ""
+                }
+            }
+        })
+        localInputArea.actionMap.put("newline", object : AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent) {
+                localInputArea.insert("\n", localInputArea.caretPosition)
+            }
+        })
+
+        // Add button listeners
+        localSendButton.addActionListener {
+            val message = localInputArea.text.trim()
+            if (message.isNotEmpty() && !viewModel.isProcessing()) {
+                sendMessage(message)
+                localInputArea.text = ""
+            }
+        }
+
+        localClearButton.addActionListener {
+            localInputArea.text = ""
+        }
         
         val inputArea = inputScrollPane.viewport.view as? JTextArea
         val sendButton = buttonPanel.components.find { it is JButton && it.text == "Send" } as? JButton
