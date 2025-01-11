@@ -35,6 +35,30 @@ import com.etdofresh.cline4rider.persistence.ChatHistory
 import java.io.File
 
 class ClineToolWindow(private val project: Project, private val toolWindow: ToolWindow) {
+    companion object {
+        private val DEFAULT_SYSTEM_PROMPT = """You are Cline, an AI coding assistant. Your role is to help developers write, modify, and understand code. You should:
+            |
+            |1. Provide clear, concise explanations
+            |2. Write efficient, well-documented code
+            |3. Follow best practices and design patterns
+            |4. Consider performance, maintainability, and readability
+            |5. Explain your reasoning when making significant decisions
+            |
+            |When writing code:
+            |- Use appropriate language idioms and conventions
+            |- Include necessary error handling
+            |- Follow the project's existing style
+            |- Keep code modular and testable
+            |
+            |Remember to:
+            |- Ask for clarification when requirements are unclear
+            |- Suggest improvements when appropriate
+            |- Explain complex concepts in simple terms
+            |- Consider security implications
+            |
+            |Your responses should be professional, accurate, and focused on solving the developer's problems efficiently.""".trimMargin()
+    }
+    
     private val viewModel = ChatViewModel.getInstance(project)
     private val tabbedPane = JBTabbedPane()
     private var lastSelectedTab = 0
@@ -80,34 +104,6 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         
         // Create and store home panel reference
         homePanel = createHomePanel()
-        
-        // Create config buttons panel
-        val configButtonsPanel = JPanel().apply {
-            background = Color(45, 45, 45)
-            layout = BoxLayout(this, BoxLayout.X_AXIS)
-            border = BorderFactory.createEmptyBorder(5, 10, 5, 10)
-            
-            add(Box.createHorizontalGlue())
-            add(JButton(".clinesystemprompt").apply {
-                background = Color(51, 102, 153)
-                foreground = Color.WHITE
-                addActionListener {
-                    openConfigEditor(".clinesystemprompt", viewModel.getSystemPrompt() ?: "")
-                }
-            })
-            add(Box.createHorizontalStrut(10))
-            add(JButton(".clinerules").apply {
-                background = Color(51, 102, 153)
-                foreground = Color.WHITE
-                addActionListener {
-                    openConfigEditor(".clinerules", readFileContent(".clinerules"))
-                }
-            })
-            add(Box.createHorizontalGlue())
-        }
-
-        // Add config buttons to the top of home panel
-        homePanel.add(configButtonsPanel, 0)
         
         // Setup tabs with icons
         tabbedPane.apply {
@@ -469,6 +465,34 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             background = Color(45, 45, 45)
             layout = BoxLayout(this, BoxLayout.PAGE_AXIS)
         }
+
+        // Create config buttons panel
+        val configButtonsPanel = JPanel().apply {
+            background = Color(45, 45, 45)
+            layout = BoxLayout(this, BoxLayout.X_AXIS)
+            border = BorderFactory.createEmptyBorder(5, 10, 5, 10)
+            
+            add(Box.createHorizontalGlue())
+            add(JButton(".clinesystemprompt").apply {
+                background = Color(51, 102, 153)
+                foreground = Color.WHITE
+                addActionListener {
+                    openConfigEditor(".clinesystemprompt", viewModel.getSystemPrompt() ?: "")
+                }
+            })
+            add(Box.createHorizontalStrut(10))
+            add(JButton(".clinerules").apply {
+                background = Color(51, 102, 153)
+                foreground = Color.WHITE
+                addActionListener {
+                    openConfigEditor(".clinerules", readFileContent(".clinerules"))
+                }
+            })
+            add(Box.createHorizontalGlue())
+        }
+
+        // Add config buttons first
+        panel.add(configButtonsPanel)
             
         // Add welcome message
         val welcomePanel = JPanel(BorderLayout()).apply {
@@ -998,10 +1022,17 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project) {
                     // Ensure the file exists and has content
                     val configFile = File(project.basePath, fileName)
-                    if (!configFile.exists() || configFile.readText() != currentContent) {
-                        configFile.writeText(currentContent)
+                    val fileContent = when {
+                        configFile.exists() -> configFile.readText()
+                        fileName == ".clinesystemprompt" -> DEFAULT_SYSTEM_PROMPT
+                        else -> currentContent
+                    }
+                    
+                    // Write content if file doesn't exist or content is different
+                    if (!configFile.exists() || configFile.readText() != fileContent) {
+                        configFile.writeText(fileContent)
                         if (fileName == ".clinesystemprompt") {
-                            viewModel.setSystemPrompt(currentContent)
+                            viewModel.setSystemPrompt(fileContent)
                         }
                     }
 

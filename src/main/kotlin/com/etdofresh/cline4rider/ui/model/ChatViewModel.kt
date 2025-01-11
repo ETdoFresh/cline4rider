@@ -27,6 +27,29 @@ class ChatViewModel(private val project: Project) {
         systemPrompt = prompt
     }
 
+    private fun getCombinedSystemPrompt(): String {
+        val systemPromptFile = File(project.basePath, ".clinesystemprompt")
+        val rulesFile = File(project.basePath, ".clinerules")
+        
+        val systemPromptContent = if (systemPromptFile.exists()) {
+            systemPromptFile.readText()
+        } else {
+            ""
+        }
+        
+        val rulesContent = if (rulesFile.exists()) {
+            rulesFile.readText()
+        } else {
+            ""
+        }
+        
+        return if (systemPromptContent.isNotEmpty() && rulesContent.isNotEmpty()) {
+            "$systemPromptContent\n$rulesContent"
+        } else {
+            systemPromptContent.ifEmpty { rulesContent }
+        }
+    }
+
     fun addMessage(message: ClineMessage) {
         messages.add(message)
         notifyMessageListeners()
@@ -121,12 +144,13 @@ class ChatViewModel(private val project: Project) {
         // Set processing state
         setProcessing(true)
 
-        // Prepare messages list including system prompt if available
+        // Prepare messages list including combined system prompt
         val messagesToSend = mutableListOf<ClineMessage>()
-        systemPrompt?.let {
+        val combinedPrompt = getCombinedSystemPrompt()
+        if (combinedPrompt.isNotEmpty()) {
             messagesToSend.add(ClineMessage(
                 role = ClineMessage.Role.SYSTEM,
-                content = it,
+                content = combinedPrompt,
                 timestamp = System.currentTimeMillis()
             ))
         }
