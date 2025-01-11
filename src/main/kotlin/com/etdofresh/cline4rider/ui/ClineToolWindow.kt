@@ -1,6 +1,9 @@
 package com.etdofresh.cline4rider.ui
 
 import com.etdofresh.cline4rider.model.ClineMessage
+import java.awt.Cursor
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import com.etdofresh.cline4rider.ui.model.ChatViewModel
 import com.intellij.icons.AllIcons
 import com.intellij.icons.AllIcons.Actions
@@ -145,6 +148,35 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         return inputPanel
     }
 
+    private val historyContent = JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        background = Color(45, 45, 45)
+    }
+    private var historyOffset = 0
+
+    init {
+        setupUI()
+        setupListeners()
+        refreshHistory()
+    }
+    
+    private fun refreshHistory() {
+        if (historyContent == null) return
+        
+        val conversations = viewModel.getRecentConversations(historyOffset)
+        if (conversations.isNotEmpty()) {
+            historyContent.removeAll()
+            conversations.forEach { conversation: ChatHistory.Conversation ->
+                val conversationPanel = createConversationPanel(conversation)
+                historyContent.add(conversationPanel)
+                historyContent.add(Box.createVerticalStrut(5))
+            }
+            historyOffset += conversations.size
+        }
+        historyContent.revalidate()
+        historyContent.repaint()
+    }
+
     private fun createHistoryPanel(): JPanel {
         val panel = JPanel(BorderLayout()).apply {
             background = Color(45, 45, 45)
@@ -159,11 +191,6 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
             horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
         }
         
-        val historyContent = JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            background = Color(45, 45, 45)
-        }
-        
         val loadMoreButton = JButton("Load More...").apply {
             background = Color(60, 60, 60)
             foreground = Color(220, 220, 220)
@@ -171,33 +198,16 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
             alignmentX = Component.CENTER_ALIGNMENT
         }
         
-        var offset = 0
-        
-        fun refreshHistory() {
-            val conversations = viewModel.getRecentConversations(offset)
-            if (conversations.isNotEmpty()) {
-            conversations.forEach { conversation: ChatHistory.Conversation ->
-                    val conversationPanel = createConversationPanel(conversation)
-                    historyContent.add(conversationPanel)
-                    historyContent.add(Box.createVerticalStrut(5))
-                }
-                offset += conversations.size
-                loadMoreButton.isVisible = viewModel.hasMoreConversations(offset)
-            }
-            historyContent.revalidate()
-            historyContent.repaint()
-        }
-        
         loadMoreButton.addActionListener {
             refreshHistory()
         }
         
-        // Initial load
-        refreshHistory()
-        
         scrollPane.viewport.view = historyContent
         panel.add(scrollPane, BorderLayout.CENTER)
         panel.add(loadMoreButton, BorderLayout.SOUTH)
+        
+        // Initial load after components are initialized
+        refreshHistory()
         
         return panel
     }
@@ -206,12 +216,40 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         val panel = JPanel(BorderLayout()).apply {
             background = Color(51, 51, 51)
             border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
+            cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
         }
         
         val timestamp = Instant.ofEpochMilli(conversation.timestamp)
             .atZone(ZoneId.systemDefault())
         val formatter = DateTimeFormatter.ofPattern("MMM dd, HH:mm:ss")
         
+        // Find first USER message
+        val firstUserMessage = conversation.messages.firstOrNull { it.role == "USER" }
+        
+        // Main content panel
+        val contentPanel = JPanel(BorderLayout()).apply {
+            background = Color(51, 51, 51)
+            border = BorderFactory.createEmptyBorder(0, 0, 0, 5)
+        }
+        
+        // Left side with message content
+        val messagePanel = JPanel(BorderLayout()).apply {
+            background = Color(51, 51, 51)
+            addMouseListener(object : MouseAdapter() {
+                override fun mouseClicked(e: MouseEvent) {
+                    viewModel.loadConversation(conversation.id)
+                    tabbedPane.selectedIndex = 1 // Switch to chat tab
+                }
+                override fun mouseEntered(e: MouseEvent) {
+                    background = Color(60, 60, 60)
+                }
+                override fun mouseExited(e: MouseEvent) {
+                    background = Color(51, 51, 51)
+                }
+            })
+        }
+        
+        // Header with timestamp
         val headerPanel = JPanel(BorderLayout()).apply {
             background = Color(51, 51, 51)
             border = BorderFactory.createEmptyBorder(0, 0, 5, 0)
@@ -224,19 +262,9 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         
         headerPanel.add(timestampLabel, BorderLayout.WEST)
         
-        val contentPanel = JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            background = Color(51, 51, 51)
-        }
-        
-        conversation.messages.take(3).forEach { message ->
-            val messagePanel = JPanel(BorderLayout()).apply {
-                background = Color(60, 60, 60)
-                border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
-            }
-            
-            val content = JTextArea().apply {
-                text = message.content
+        // Message content
+        if (firstUserMessage != null) {
+            val content = JTextArea(firstUserMessage.content).apply {
                 background = Color(60, 60, 60)
                 foreground = Color(220, 220, 220)
                 lineWrap = true
@@ -245,21 +273,33 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
                 border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
             }
             
+            messagePanel.add(headerPanel, BorderLayout.NORTH)
             messagePanel.add(content, BorderLayout.CENTER)
-            contentPanel.add(messagePanel)
-            contentPanel.add(Box.createVerticalStrut(5))
         }
         
-        if (conversation.messages.size > 3) {
-            val moreLabel = JLabel("...${conversation.messages.size - 3} more messages").apply {
-                foreground = Color(150, 150, 150)
-                font = font.deriveFont(font.size2D - 1f)
-                alignmentX = Component.RIGHT_ALIGNMENT
+        // Delete button
+        val deleteButton = JButton(AllIcons.Actions.Cancel).apply {
+            background = Color(51, 51, 51)
+            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+            toolTipText = "Delete conversation"
+            addActionListener {
+                val confirm = JOptionPane.showConfirmDialog(
+                    panel,
+                    "Are you sure you want to delete this conversation?",
+                    "Confirm Delete",
+                    JOptionPane.YES_NO_OPTION
+                )
+                if (confirm == JOptionPane.YES_OPTION) {
+                    viewModel.deleteConversationById(conversation.id)
+                    refreshHistory()
+                }
             }
-            contentPanel.add(moreLabel)
         }
         
-        panel.add(headerPanel, BorderLayout.NORTH)
+        
+        contentPanel.add(messagePanel, BorderLayout.CENTER)
+        contentPanel.add(deleteButton, BorderLayout.EAST)
+        
         panel.add(contentPanel, BorderLayout.CENTER)
         
         return panel
@@ -344,7 +384,9 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
 
     private fun setupListeners() {
         viewModel.addMessageListener { messages ->
+            println("Message listener triggered with ${messages.size} messages")
             SwingUtilities.invokeLater {
+                println("Refreshing UI with messages: $messages")
                 refreshMessages()
             }
         }
@@ -412,19 +454,29 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
     }
 
     private fun refreshMessages() {
+        println("Refreshing messages - current message count: ${viewModel.getMessages().size}")
         chatPanel.removeAll()
+        println("Chat panel cleared")
 
         viewModel.getMessages().forEach { message ->
+            println("Adding message: ${message.content}")
             addMessageToUI(message)
         }
 
+        println("Messages added, revalidating UI")
         chatPanel.revalidate()
         chatPanel.repaint()
         
         // Auto-scroll to bottom
         SwingUtilities.invokeLater {
-            val vertical = chatPanel.parent.parent as JScrollPane
-            vertical.verticalScrollBar.value = vertical.verticalScrollBar.maximum
+            println("Attempting auto-scroll")
+            val vertical = chatPanel.parent.parent as? JScrollPane
+            if (vertical != null) {
+                println("Scroll pane found, setting scroll position")
+                vertical.verticalScrollBar.value = vertical.verticalScrollBar.maximum
+            } else {
+                println("Scroll pane not found!")
+            }
         }
     }
 

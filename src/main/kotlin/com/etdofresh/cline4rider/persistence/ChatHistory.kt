@@ -72,6 +72,13 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         conversations.find { it.id == conversationId }?.messages?.clear()
     }
 
+    fun deleteConversation(conversationId: String) {
+        conversations.removeIf { it.id == conversationId }
+        if (conversationId == currentConversationId) {
+            currentConversationId = null
+        }
+    }
+
     fun getCurrentConversationId(): String? = currentConversationId
 
     override fun getState(): ChatHistory = this

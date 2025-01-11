@@ -142,12 +142,23 @@ class ChatViewModel(private val project: Project) {
     }
 
     fun loadConversation(conversationId: String) {
+        logger.info("Loading conversation: $conversationId")
         currentConversationId = conversationId
+        logger.info("Current messages: ${getMessages()}")
         notifyMessageListeners()
         notifyHistoryListeners()
+        logger.info("Finished loading conversation")
     }
 
     fun getCurrentConversationId(): String? = currentConversationId
+
+    fun deleteConversationById(conversationId: String) {
+        chatHistory.deleteConversation(conversationId)
+        if (conversationId == currentConversationId) {
+            startNewConversation()
+        }
+        notifyHistoryListeners()
+    }
 
     companion object {
         @JvmStatic
