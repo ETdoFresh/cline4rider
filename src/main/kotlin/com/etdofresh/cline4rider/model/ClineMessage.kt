@@ -4,7 +4,8 @@ data class ClineMessage(
     val role: Role,
     val content: String,
     val timestamp: Long,
-    val toolCalls: List<ToolCall> = emptyList()
+    val toolCalls: List<ToolCall> = emptyList(),
+    val cost: Double? = null
 ) {
     enum class Role {
         SYSTEM,

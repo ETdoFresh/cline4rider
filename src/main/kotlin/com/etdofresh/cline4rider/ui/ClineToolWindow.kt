@@ -928,7 +928,13 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             border = BorderFactory.createEmptyBorder(0, 0, 5, 0)
         }
 
-        val timestampLabel = JLabel("[${formatter.format(timestamp)}]").apply {
+        val headerText = buildString {
+            append("[${formatter.format(timestamp)}]")
+            if (message.cost != null && message.cost > 0.0) {
+                append(" [$${String.format("%.4f", message.cost)}]")
+            }
+        }
+        val timestampLabel = JLabel(headerText).apply {
             foreground = Color(150, 150, 150)
             font = font.deriveFont(font.size2D - 1f)
         }

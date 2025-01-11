@@ -178,13 +178,18 @@ class ChatViewModel(private val project: Project) {
                 }
 
                 // Handle streaming responses
-                apiClient.sendMessages(messagesToSend) { chunk ->
+                var totalCost = 0.0
+                apiClient.sendMessages(messagesToSend) { chunk, stats ->
                     if (!errorOccurred) {
                         currentContent.append(chunk)
+                        stats?.total_cost?.let { totalCost = it }
                         ApplicationManager.getApplication().invokeLater {
                             try {
-                                // Update the last message (assistant's message) with accumulated content
-                                val updatedAssistantMessage = messages.last().copy(content = currentContent.toString())
+                                // Update the last message (assistant's message) with accumulated content and cost
+                                val updatedAssistantMessage = messages.last().copy(
+                                    content = currentContent.toString(),
+                                    cost = totalCost
+                                )
                                 messages[messages.size - 1] = updatedAssistantMessage
                                 
                                 // First update the chat history in a write action
