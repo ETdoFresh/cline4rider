@@ -22,20 +22,24 @@ class ChatViewModel(private val project: Project) {
     private var isProcessing = false
     private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
     private var currentConversationId: String? = null
-
-    init {
-        startNewConversation()
-    }
+    private var isFirstUserMessage = true
+    private val welcomeMessage = ClineMessage(
+        ClineMessage.Role.SYSTEM,
+        "Welcome to Cline for Rider! How can I assist you today?",
+        System.currentTimeMillis()
+    )
 
     private fun startNewConversation() {
         currentConversationId = chatHistory.startNewConversation()
-        val welcomeMessage = ClineMessage(
-            ClineMessage.Role.SYSTEM,
-            "Welcome to Cline for Rider! How can I assist you today?",
-            System.currentTimeMillis()
-        )
-        chatHistory.addMessage(currentConversationId!!, welcomeMessage)
+        if (!isFirstUserMessage) {
+            // Only save welcome message to history if this isn't the first conversation
+            chatHistory.addMessage(currentConversationId!!, welcomeMessage)
+        }
         notifyMessageListeners()
+    }
+
+    init {
+        startNewConversation()
     }
 
     fun addMessageListener(listener: (List<ClineMessage>) -> Unit) {
@@ -55,6 +59,12 @@ class ChatViewModel(private val project: Project) {
 
     fun sendMessage(content: String) {
         if (content.isBlank() || isProcessing) return
+
+        if (isFirstUserMessage) {
+            // For the first user message, we need to save both welcome message and user message
+            isFirstUserMessage = false
+            chatHistory.addMessage(currentConversationId!!, welcomeMessage)
+        }
 
         val userMessage = ClineMessage(Role.USER, content, System.currentTimeMillis())
         chatHistory.addMessage(currentConversationId!!, userMessage)
@@ -100,14 +110,23 @@ class ChatViewModel(private val project: Project) {
     fun clearMessages() {
         currentConversationId?.let {
             chatHistory.clearConversation(it)
+            isFirstUserMessage = true
             startNewConversation()
         }
     }
 
     fun getMessages(): List<ClineMessage> {
-        return currentConversationId?.let {
+        val messages = currentConversationId?.let {
             chatHistory.getConversationMessages(it)
         } ?: emptyList()
+
+        // If this is the first conversation and no messages have been saved yet,
+        // return just the welcome message for display purposes
+        return if (isFirstUserMessage && messages.isEmpty()) {
+            listOf(welcomeMessage)
+        } else {
+            messages
+        }
     }
 
     fun getRecentConversations(offset: Int = 0): List<ChatHistory.Conversation> {
@@ -137,13 +156,16 @@ class ChatViewModel(private val project: Project) {
     }
 
     fun createNewTask() {
-        // Don't clear messages, just start a new conversation
+        // Start a new conversation with first message state reset
+        isFirstUserMessage = true
         startNewConversation()
     }
 
     fun loadConversation(conversationId: String) {
         logger.info("Loading conversation: $conversationId")
         currentConversationId = conversationId
+        // When loading an existing conversation, it's never the first message
+        isFirstUserMessage = false
         logger.info("Current messages: ${getMessages()}")
         notifyMessageListeners()
         notifyHistoryListeners()
