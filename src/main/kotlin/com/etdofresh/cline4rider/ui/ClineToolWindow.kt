@@ -25,7 +25,11 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.awt.Component
+import java.awt.Dialog
+import java.awt.Frame
+import java.awt.Window
 import com.etdofresh.cline4rider.persistence.ChatHistory
+import java.io.File
 
 class ClineToolWindow(private val project: Project, private val toolWindow: ToolWindow) {
     private val viewModel = ChatViewModel.getInstance(project)
@@ -75,6 +79,34 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         
         // Create and store home panel reference
         homePanel = createHomePanel()
+        
+        // Create config buttons panel
+        val configButtonsPanel = JPanel().apply {
+            background = Color(45, 45, 45)
+            layout = BoxLayout(this, BoxLayout.X_AXIS)
+            border = BorderFactory.createEmptyBorder(5, 10, 5, 10)
+            
+            add(Box.createHorizontalGlue())
+            add(JButton(".clinesystemprompt").apply {
+                background = Color(51, 102, 153)
+                foreground = Color.WHITE
+                addActionListener {
+                    openConfigEditor(".clinesystemprompt", viewModel.getSystemPrompt() ?: "")
+                }
+            })
+            add(Box.createHorizontalStrut(10))
+            add(JButton(".clinerules").apply {
+                background = Color(51, 102, 153)
+                foreground = Color.WHITE
+                addActionListener {
+                    openConfigEditor(".clinerules", readFileContent(".clinerules"))
+                }
+            })
+            add(Box.createHorizontalGlue())
+        }
+
+        // Add config buttons to the top of home panel
+        homePanel.add(configButtonsPanel, 0)
         
         // Setup tabs with icons
         tabbedPane.apply {
@@ -433,9 +465,9 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     }
 
     private fun createHomePanel(): JPanel {
-        val panel = JPanel(BorderLayout()).apply {
+        val panel = JPanel().apply {
             background = Color(45, 45, 45)
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            layout = BoxLayout(this, BoxLayout.PAGE_AXIS)
         }
             
         // Add welcome message
@@ -553,9 +585,9 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     private lateinit var homePanel: JPanel
     
     private fun refreshHomePanel() {
-        val panel = JPanel(BorderLayout()).apply {
+        val panel = JPanel().apply {
             background = Color(45, 45, 45)
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            layout = BoxLayout(this, BoxLayout.PAGE_AXIS)
         }
         
         // Add welcome message
@@ -668,6 +700,33 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         
         panel.add(homeInputPanel)
         
+        // Create config buttons panel
+        val configButtonsPanel = JPanel().apply {
+            background = Color(45, 45, 45)
+            layout = BoxLayout(this, BoxLayout.X_AXIS)
+            border = BorderFactory.createEmptyBorder(5, 10, 5, 10)
+            
+            add(Box.createHorizontalGlue())
+            add(JButton(".clinesystemprompt").apply {
+                background = Color(51, 102, 153)
+                foreground = Color.WHITE
+                addActionListener {
+                    openConfigEditor(".clinesystemprompt", viewModel.getSystemPrompt() ?: "")
+                }
+            })
+            add(Box.createHorizontalStrut(10))
+            add(JButton(".clinerules").apply {
+                background = Color(51, 102, 153)
+                foreground = Color.WHITE
+                addActionListener {
+                    openConfigEditor(".clinerules", readFileContent(".clinerules"))
+                }
+            })
+            add(Box.createHorizontalGlue())
+        }
+
+        panel.add(configButtonsPanel, 0)
+
         homePanel.removeAll()
         homePanel.add(panel)
         homePanel.revalidate()
@@ -873,6 +932,81 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         
         chatPanel.add(messagePanel)
         chatPanel.add(Box.createVerticalStrut(1))
+    }
+
+    private fun openConfigEditor(fileName: String, currentContent: String) {
+        val dialog = JDialog().apply {
+            title = "Edit $fileName"
+            modalityType = Dialog.ModalityType.APPLICATION_MODAL
+            layout = BorderLayout()
+        }
+        
+        val textArea = JTextArea(currentContent).apply {
+            font = font.deriveFont(12f)
+            background = Color(51, 51, 51)
+            foreground = Color(220, 220, 220)
+            caretColor = Color(220, 220, 220)
+            lineWrap = true
+            wrapStyleWord = true
+            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        }
+        
+        val scrollPane = JBScrollPane(textArea).apply {
+            border = BorderFactory.createLineBorder(Color(60, 60, 60))
+            preferredSize = Dimension(800, 600)
+        }
+        
+        val buttonPanel = JPanel().apply {
+            background = Color(45, 45, 45)
+            layout = BoxLayout(this, BoxLayout.X_AXIS)
+            border = BorderFactory.createEmptyBorder(5, 10, 5, 10)
+            
+            add(Box.createHorizontalGlue())
+            add(JButton("Save").apply {
+                background = Color(51, 102, 153)
+                foreground = Color.WHITE
+                addActionListener {
+                    saveConfigFile(fileName, textArea.text)
+                    dialog.dispose()
+                }
+            })
+            add(Box.createHorizontalStrut(10))
+            add(JButton("Cancel").apply {
+                background = Color(60, 60, 60)
+                foreground = Color.WHITE
+                addActionListener { dialog.dispose() }
+            })
+        }
+        
+        dialog.add(scrollPane, BorderLayout.CENTER)
+        dialog.add(buttonPanel, BorderLayout.SOUTH)
+        dialog.pack()
+        dialog.setLocationRelativeTo(contentPanel)
+        dialog.isVisible = true
+    }
+
+    private fun readFileContent(fileName: String): String {
+        return try {
+            File(project.basePath, fileName).readText()
+        } catch (e: Exception) {
+            ""
+        }
+    }
+
+    private fun saveConfigFile(fileName: String, content: String) {
+        try {
+            File(project.basePath, fileName).writeText(content)
+            if (fileName == ".clinesystemprompt") {
+                viewModel.setSystemPrompt(content)
+            }
+        } catch (e: Exception) {
+            JOptionPane.showMessageDialog(
+                contentPanel,
+                "Failed to save $fileName: ${e.message}",
+                "Error",
+                JOptionPane.ERROR_MESSAGE
+            )
+        }
     }
 
     fun getContent() = contentPanel
