@@ -43,6 +43,9 @@ class ConversationStats : JPanel(BorderLayout()) {
     private val costLabel = JLabel().apply {
         foreground = Color(180, 180, 180)
     }
+    private val responseTimeLabel = JLabel().apply {
+        foreground = Color(180, 180, 180)
+    }
     
     private var isCollapsed = false
     private var fullText = ""
@@ -75,6 +78,8 @@ class ConversationStats : JPanel(BorderLayout()) {
         statsPanel.add(cachedTokensLabel)
         statsPanel.add(Box.createHorizontalStrut(10))
         statsPanel.add(costLabel)
+        statsPanel.add(Box.createHorizontalStrut(10))
+        statsPanel.add(responseTimeLabel)
         
         // Add components
         add(initialRequestPanel, BorderLayout.CENTER)
@@ -125,6 +130,15 @@ class ConversationStats : JPanel(BorderLayout()) {
             updateRequestText()
         }
         
+        // Calculate response time
+        val userMessageTime = firstUserMessage?.timestamp ?: 0
+        val assistantResponse = messages.firstOrNull { 
+            it.role == ClineMessage.Role.ASSISTANT && it.timestamp > userMessageTime 
+        }
+        val responseTime = if (assistantResponse != null) {
+            (assistantResponse.timestamp - userMessageTime) / 1000.0 // Convert to seconds
+        } else 0.0
+
         // Calculate prompt and completion tokens
         val promptTokens = messages.filter { it.role == ClineMessage.Role.USER }
             .sumOf { it.tokens ?: (it.content.length / 4) }
@@ -148,5 +162,6 @@ class ConversationStats : JPanel(BorderLayout()) {
         }
         
         costLabel.text = "Cost: ↑$${String.format("%.4f", promptCost)} ↓$${String.format("%.4f", completionCost)}"
+        responseTimeLabel.text = "Response Time: ${String.format("%.2f", responseTime)}s"
     }
 }
