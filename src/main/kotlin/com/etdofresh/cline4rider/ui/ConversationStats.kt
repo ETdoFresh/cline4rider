@@ -130,13 +130,14 @@ class ConversationStats : JPanel(BorderLayout()) {
             updateRequestText()
         }
         
-        // Calculate response time
-        val userMessageTime = firstUserMessage?.timestamp ?: 0
-        val assistantResponse = messages.firstOrNull { 
-            it.role == ClineMessage.Role.ASSISTANT && it.timestamp > userMessageTime 
+        // Calculate response time for the latest assistant message
+        val latestUserMessage = messages.lastOrNull { it.role == ClineMessage.Role.USER }
+        val latestAssistantMessage = messages.lastOrNull { 
+            it.role == ClineMessage.Role.ASSISTANT && 
+            (latestUserMessage == null || it.timestamp > latestUserMessage.timestamp)
         }
-        val responseTime = if (assistantResponse != null) {
-            (assistantResponse.timestamp - userMessageTime) / 1000.0 // Convert to seconds
+        val responseTime = if (latestUserMessage != null && latestAssistantMessage != null) {
+            (latestAssistantMessage.timestamp - latestUserMessage.timestamp) / 1000.0
         } else 0.0
 
         // Calculate prompt and completion tokens

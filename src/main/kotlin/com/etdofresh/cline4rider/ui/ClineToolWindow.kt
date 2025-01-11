@@ -947,6 +947,16 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             if (message.cost != null && message.cost > 0.0) {
                 append(" [$${String.format("%.4f", message.cost)}]")
             }
+            // Add response time for ASSISTANT messages
+            if (message.role == ClineMessage.Role.ASSISTANT) {
+                val userMessage = viewModel.getMessages()
+                    .takeWhile { it != message }
+                    .lastOrNull { it.role == ClineMessage.Role.USER }
+                if (userMessage != null) {
+                    val responseTime = (message.timestamp - userMessage.timestamp) / 1000.0
+                    append(" [${String.format("%.2f", responseTime)}s]")
+                }
+            }
         }
         val timestampLabel = JLabel(headerText).apply {
             foreground = Color(150, 150, 150)
