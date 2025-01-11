@@ -26,11 +26,11 @@ class ApiProvider {
         .connectTimeout(Duration.ofSeconds(30))
         .build()
 
-    suspend fun sendMessage(message: String, apiKey: String, provider: ClineSettings.Provider): Result<ClineMessage> = withContext(Dispatchers.IO) {
+    suspend fun sendMessage(message: String, apiKey: String, provider: ClineSettings.Provider, settings: ClineSettings): Result<ClineMessage> = withContext(Dispatchers.IO) {
         try {
             when (provider) {
                 ClineSettings.Provider.OPENROUTER -> {
-                    val openRouterClient = OpenRouterClient()
+                    val openRouterClient = OpenRouterClient(settings)
                     val response = openRouterClient.sendMessage(ClineMessage(Role.USER, message, System.currentTimeMillis()))
                     val completionResponse = gson.fromJson(response, ChatCompletionResponse::class.java)
                     

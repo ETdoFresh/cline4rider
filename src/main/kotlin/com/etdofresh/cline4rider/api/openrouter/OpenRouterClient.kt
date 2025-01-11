@@ -1,6 +1,7 @@
 package com.etdofresh.cline4rider.api.openrouter
 
 import com.etdofresh.cline4rider.model.ClineMessage
+import com.etdofresh.cline4rider.settings.ClineSettings
 import com.etdofresh.cline4rider.api.openrouter.ChatCompletionRequest
 import com.etdofresh.cline4rider.api.openrouter.ChatCompletionResponse
 import com.etdofresh.cline4rider.api.openrouter.Message
@@ -24,12 +25,16 @@ private val json = Json {
 
 private inline fun <reified T> T.toJson(): String = json.encodeToString(this)
 
-class OpenRouterClient {
+class OpenRouterClient(private val settings: ClineSettings) {
     private val client = OkHttpClient()
     private val baseUrl = "https://openrouter.ai/api/v1"
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     fun sendMessage(message: ClineMessage): String {
+        val apiKey = settings.getApiKey()
+        if (apiKey.isNullOrEmpty()) {
+            throw OpenRouterException("OpenRouter API key is not configured")
+        }
         try {
             val request = ChatCompletionRequest(
                 model = "openai/gpt-3.5-turbo",
@@ -41,6 +46,9 @@ class OpenRouterClient {
             val httpRequest = Request.Builder()
                 .url("$baseUrl/chat/completions")
                 .post(requestBody)
+                .header("Authorization", "Bearer $apiKey")
+                .header("HTTP-Referer", "https://github.com/etdofresh/cline4rider")
+                .header("X-Title", "Cline for Rider")
                 .build()
 
             val response: Response = client.newCall(httpRequest).execute()
