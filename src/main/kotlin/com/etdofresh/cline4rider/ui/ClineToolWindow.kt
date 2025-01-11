@@ -832,32 +832,71 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     }
 
     private fun refreshMessages() {
-        chatPanel.removeAll()
-
-        viewModel.getMessages().forEach { message ->
-            addMessageToUI(message)
-        }
-
-        chatPanel.revalidate()
-        chatPanel.repaint()
-        
-        // Auto-scroll to bottom
         SwingUtilities.invokeLater {
+            chatPanel.removeAll()
+
+            // Get all messages and process them
+            val messages = viewModel.getMessages()
+            messages.forEach { message ->
+                addMessageToUI(message)
+            }
+
+            // Batch UI updates
+            chatPanel.revalidate()
+            chatPanel.repaint()
+            
+            // Smooth auto-scroll with animation
             val vertical = chatPanel.parent.parent as? JScrollPane
             if (vertical != null) {
-                vertical.verticalScrollBar.value = vertical.verticalScrollBar.maximum
+                val scrollBar = vertical.verticalScrollBar
+                val targetValue = scrollBar.maximum
+                
+                // Only animate if we're not already at the bottom
+                if (scrollBar.value != targetValue) {
+                    var timer: Timer? = null
+                    timer = Timer(8) { // ~120 FPS for smoother animation
+                        val currentValue = scrollBar.value
+                        val step = (targetValue - currentValue) / 6 // Gentler interpolation
+                        if (step > 0) {
+                            scrollBar.value = currentValue + step.toInt().coerceAtLeast(1)
+                            if (scrollBar.value >= targetValue - 1) {
+                                timer?.stop()
+                                scrollBar.value = targetValue // Ensure we reach exact target
+                            }
+                        } else {
+                            timer?.stop()
+                        }
+                    }.apply {
+                        isRepeats = true
+                        start()
+                    }
+                }
             }
         }
     }
 
-    private fun addMessageToUI(message: ClineMessage) {
+    private fun addMessageToUI(message: ClineMessage, animate: Boolean = true) {
         val timestamp = Instant.ofEpochMilli(message.timestamp)
             .atZone(ZoneId.systemDefault())
         val formatter = DateTimeFormatter.ofPattern("HH:mm:ss")
         
+        // Create message panel with fade-in effect
         val messagePanel = JPanel(BorderLayout()).apply {
             background = Color(45, 45, 45)
             border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+            if (animate && message.role == ClineMessage.Role.ASSISTANT) {
+                // Start with a slightly different background color for fade-in effect
+                background = Color(45, 45, 45).brighter()
+                Timer(16) { // Fade in over ~300ms
+                    background = Color(45, 45, 45)
+                    revalidate()
+                    repaint()
+                }.apply {
+                    initialDelay = 50 // Small delay before fade-in
+                    isRepeats = false
+                    start()
+                }
+            }
         }
 
         val headerPanel = JPanel(BorderLayout()).apply {
@@ -886,6 +925,19 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
             background = Color(51, 51, 51)
             border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+            
+            // Add subtle transition effect for assistant messages
+            if (animate && message.role == ClineMessage.Role.ASSISTANT) {
+                background = Color(51, 51, 51).brighter()
+                Timer(50) {
+                    background = Color(51, 51, 51)
+                    revalidate()
+                    repaint()
+                }.apply {
+                    isRepeats = false
+                    start()
+                }
+            }
         }
 
         if (message.content.isNotEmpty()) {
