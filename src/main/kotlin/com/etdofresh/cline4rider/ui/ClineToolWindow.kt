@@ -83,17 +83,8 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
             addTab("Tasks", AllIcons.Nodes.Folder, createTasksPanel())
             addTab("Settings", AllIcons.General.Settings, createSettingsPanel())
             
-            // Add close button to the right
-            val closeButton = JButton(AllIcons.Actions.Close).apply {
-                toolTipText = "Close Cline"
-                addActionListener {
-                    toolWindow.hide()
-                }
-            }
-            
             val tabsPanel = JPanel(BorderLayout()).apply {
                 add(tabbedPane, BorderLayout.CENTER)
-                add(closeButton, BorderLayout.EAST)
             }
             
             contentPanel.add(tabsPanel, BorderLayout.CENTER)
