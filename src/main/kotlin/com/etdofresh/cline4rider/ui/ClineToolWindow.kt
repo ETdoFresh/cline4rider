@@ -153,8 +153,8 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
     
     private fun refreshHistory() {
         val conversations = viewModel.getRecentConversations(historyOffset)
-        historyContent.removeAll()
-        if (conversations.isEmpty()) {
+        if (conversations.isEmpty() && historyOffset == 0) {
+            historyContent.removeAll()
             historyContent.add(JLabel("No conversation history", SwingConstants.CENTER).apply {
                 foreground = Color(150, 150, 150)
                 font = font.deriveFont(font.size2D - 1f)
