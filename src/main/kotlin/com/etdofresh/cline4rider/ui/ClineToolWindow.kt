@@ -130,6 +130,19 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
             minimumSize = Dimension(0, JBUI.scale(40))
         }
         
+        inputPanel.add(inputScrollPane, BorderLayout.CENTER)
+
+        val buttonPanel = JPanel().apply {
+            background = Color(45, 45, 45)
+            layout = BoxLayout(this, BoxLayout.X_AXIS)
+            border = BorderFactory.createEmptyBorder(5, 0, 0, 0)
+        }
+        
+        buttonPanel.add(Box.createHorizontalGlue())
+        buttonPanel.add(clearButton)
+        buttonPanel.add(Box.createHorizontalStrut(5))
+        buttonPanel.add(sendButton)
+        
         val inputArea = inputScrollPane.viewport.view as? JTextArea
         val sendButton = buttonPanel.components.find { it is JButton && it.text == "Send" } as? JButton
         
@@ -157,19 +170,6 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
                 inputArea.text = ""
             }
         }
-        
-        inputPanel.add(inputScrollPane, BorderLayout.CENTER)
-
-        val buttonPanel = JPanel().apply {
-            background = Color(45, 45, 45)
-            layout = BoxLayout(this, BoxLayout.X_AXIS)
-            border = BorderFactory.createEmptyBorder(5, 0, 0, 0)
-        }
-        
-        buttonPanel.add(Box.createHorizontalGlue())
-        buttonPanel.add(clearButton)
-        buttonPanel.add(Box.createHorizontalStrut(5))
-        buttonPanel.add(sendButton)
         
         inputPanel.add(buttonPanel, BorderLayout.SOUTH)
         
