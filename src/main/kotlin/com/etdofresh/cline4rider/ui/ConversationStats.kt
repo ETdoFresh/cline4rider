@@ -130,15 +130,25 @@ class ConversationStats : JPanel(BorderLayout()) {
             updateRequestText()
         }
         
-        // Calculate response time for the latest assistant message
-        val latestUserMessage = messages.lastOrNull { it.role == ClineMessage.Role.USER }
-        val latestAssistantMessage = messages.lastOrNull { 
-            it.role == ClineMessage.Role.ASSISTANT && 
-            (latestUserMessage == null || it.timestamp > latestUserMessage.timestamp)
+        // Calculate total response time for all message pairs
+        var totalResponseTime = 0.0
+        var currentUserMessage: ClineMessage? = null
+        
+        messages.forEach { message ->
+            when (message.role) {
+                ClineMessage.Role.USER -> {
+                    currentUserMessage = message
+                }
+                ClineMessage.Role.ASSISTANT -> {
+                    currentUserMessage?.let { userMessage ->
+                        if (message.timestamp > userMessage.timestamp) {
+                            totalResponseTime += (message.timestamp - userMessage.timestamp) / 1000.0
+                        }
+                    }
+                }
+                else -> {} // Ignore other message types
+            }
         }
-        val responseTime = if (latestUserMessage != null && latestAssistantMessage != null) {
-            (latestAssistantMessage.timestamp - latestUserMessage.timestamp) / 1000.0
-        } else 0.0
 
         // Calculate prompt and completion tokens
         val promptTokens = messages.filter { it.role == ClineMessage.Role.USER }
@@ -163,6 +173,6 @@ class ConversationStats : JPanel(BorderLayout()) {
         }
         
         costLabel.text = "Cost: ↑$${String.format("%.4f", promptCost)} ↓$${String.format("%.4f", completionCost)}"
-        responseTimeLabel.text = "Response Time: ${String.format("%.2f", responseTime)}s"
+        responseTimeLabel.text = "Total Response Time: ${String.format("%.2f", totalResponseTime)}s"
     }
 }
