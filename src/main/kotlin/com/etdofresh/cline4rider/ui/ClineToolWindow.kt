@@ -143,6 +143,8 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         buttonPanel.add(Box.createHorizontalStrut(5))
         buttonPanel.add(sendButton)
         
+        inputPanel.add(buttonPanel, BorderLayout.SOUTH)
+        
         val inputArea = inputScrollPane.viewport.view as? JTextArea
         val sendButton = buttonPanel.components.find { it is JButton && it.text == "Send" } as? JButton
         
@@ -170,8 +172,6 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
                 inputArea.text = ""
             }
         }
-        
-        inputPanel.add(buttonPanel, BorderLayout.SOUTH)
         
         return inputPanel
     }
