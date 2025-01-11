@@ -133,11 +133,11 @@ class ChatViewModel(private val project: Project) {
             timestamp = System.currentTimeMillis()
         ))
 
-        // Create an assistant message placeholder
+        // Create an assistant message placeholder (timestamp will be set when response starts)
         val assistantMessage = ClineMessage(
             role = ClineMessage.Role.ASSISTANT,
             content = "",
-            timestamp = System.currentTimeMillis()
+            timestamp = 0L  // Will be updated when response starts
         )
         addMessage(assistantMessage)
 
@@ -182,6 +182,18 @@ class ChatViewModel(private val project: Project) {
                 var cacheDiscount = 0.0
                 apiClient.sendMessages(messagesToSend) { chunk, stats ->
                     if (!errorOccurred) {
+                        // If this is the first chunk, update the timestamp
+                        if (currentContent.isEmpty()) {
+                            ApplicationManager.getApplication().invokeLater {
+                                // Update the timestamp when we receive the first chunk
+                                val updatedAssistantMessage = messages.last().copy(
+                                    timestamp = System.currentTimeMillis()
+                                )
+                                messages[messages.size - 1] = updatedAssistantMessage
+                                notifyMessageListeners()
+                            }
+                        }
+                        
                         currentContent.append(chunk)
                         stats?.let { 
                             totalCost = it.total_cost ?: 0.0
@@ -193,7 +205,8 @@ class ChatViewModel(private val project: Project) {
                                 val updatedAssistantMessage = messages.last().copy(
                                     content = currentContent.toString(),
                                     cost = totalCost,
-                                    cacheDiscount = cacheDiscount
+                                    cacheDiscount = cacheDiscount,
+                                    timestamp = if (messages.last().timestamp == 0L) System.currentTimeMillis() else messages.last().timestamp
                                 )
                                 messages[messages.size - 1] = updatedAssistantMessage
                                 
