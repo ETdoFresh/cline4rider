@@ -4,6 +4,8 @@ import com.intellij.credentialStore.CredentialAttributes
 import com.intellij.credentialStore.Credentials
 import com.intellij.credentialStore.generateServiceName
 import com.intellij.ide.passwordSafe.PasswordSafe
+import com.intellij.openapi.application.runReadAction
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.*
 import com.intellij.openapi.project.Project
 
@@ -28,8 +30,7 @@ class ClineSettings(private val project: Project) : PersistentStateComponent<Cli
     }
 
     fun getApiKey(): String? {
-        val credentials = PasswordSafe.instance.get(createCredentialAttributes())
-        return credentials?.getPasswordAsString()
+        return PasswordSafe.instance.get(createCredentialAttributes())?.getPasswordAsString()
     }
 
     fun setApiKey(apiKey: String) {

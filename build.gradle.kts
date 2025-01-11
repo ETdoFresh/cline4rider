@@ -15,12 +15,13 @@ dependencies {
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
     implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.jgoodies:jgoodies-forms:1.9.0")
 }
 
 kotlin {
     sourceSets.all {
         languageSettings {
-            languageVersion = "1.8"
+            languageVersion = "1.9"
         }
     }
 }

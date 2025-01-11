@@ -45,4 +45,13 @@
                 factoryClass="com.etdofresh.cline4rider.ui.ClineToolWindowFactory"
                 icon="META-INF/pluginIcon.svg"/>
   </extensions>
+
+  <!-- Settings configuration -->
+  <extensions defaultExtensionNs="com.intellij">
+    <projectConfigurable 
+        instance="com.etdofresh.cline4rider.settings.ClineSettingsConfigurable"
+        displayName="Cline4Rider"
+        id="preferences.ClineSettings"
+        parentId="tools"/>
+  </extensions>
 </idea-plugin>
