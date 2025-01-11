@@ -148,18 +148,18 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         return inputPanel
     }
 
-    private val historyContent = JPanel().apply {
-        layout = BoxLayout(this, BoxLayout.Y_AXIS)
-        background = Color(45, 45, 45)
-    }
     private var historyOffset = 0
+    private lateinit var historyContent: JPanel
     
     private fun refreshHistory() {
-        if (historyContent == null) return
-        
         val conversations = viewModel.getRecentConversations(historyOffset)
-        if (conversations.isNotEmpty()) {
-            historyContent.removeAll()
+        historyContent.removeAll()
+        if (conversations.isEmpty()) {
+            historyContent.add(JLabel("No conversation history", SwingConstants.CENTER).apply {
+                foreground = Color(150, 150, 150)
+                font = font.deriveFont(font.size2D - 1f)
+            })
+        } else {
             conversations.forEach { conversation: ChatHistory.Conversation ->
                 val conversationPanel = createConversationPanel(conversation)
                 historyContent.add(conversationPanel)
@@ -172,6 +172,11 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
     }
 
     private fun createHistoryPanel(): JPanel {
+        historyContent = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            background = Color(45, 45, 45)
+        }
+        
         val panel = JPanel(BorderLayout()).apply {
             background = Color(45, 45, 45)
             layout = BoxLayout(this, BoxLayout.Y_AXIS)
