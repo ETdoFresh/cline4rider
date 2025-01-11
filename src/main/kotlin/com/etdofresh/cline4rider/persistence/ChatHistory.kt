@@ -43,6 +43,7 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         var role: String = ""
         var content: String = ""
         var timestamp: Long = 0
+        var toolCalls: MutableList<SerializableToolCall> = mutableListOf()
 
         companion object {
             fun fromClineMessage(message: ClineMessage): SerializableMessage {
@@ -50,6 +51,9 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
                     role = message.role.toString()
                     content = message.content
                     timestamp = message.timestamp
+                    toolCalls = message.toolCalls.map { 
+                        SerializableToolCall.fromToolCall(it) 
+                    }.toMutableList()
                 }
             }
         }
@@ -58,8 +62,37 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
             return ClineMessage(
                 role = ClineMessage.Role.valueOf(role.uppercase()),
                 content = content,
-                timestamp = timestamp
+                timestamp = timestamp,
+                toolCalls = toolCalls.map { it.toToolCall() }
             )
+        }
+
+        @Tag("toolCall")
+        class SerializableToolCall {
+            var id: String = ""
+            var name: String = ""
+            var arguments: String = ""
+            var output: String? = null
+
+            companion object {
+                fun fromToolCall(toolCall: ClineMessage.ToolCall): SerializableToolCall {
+                    return SerializableToolCall().apply {
+                        id = toolCall.id
+                        name = toolCall.name
+                        arguments = toolCall.arguments
+                        output = toolCall.output
+                    }
+                }
+            }
+
+            fun toToolCall(): ClineMessage.ToolCall {
+                return ClineMessage.ToolCall(
+                    id = id,
+                    name = name,
+                    arguments = arguments,
+                    output = output
+                )
+            }
         }
     }
 }

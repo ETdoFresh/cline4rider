@@ -188,23 +188,70 @@ class ClineToolWindow(project: Project, _toolWindow: ToolWindow) {
         }
         
         val roleLabel = JLabel(" ${message.role}:").apply {
-            foreground = Color(220, 220, 220)
+            foreground = when (message.role) {
+                ClineMessage.Role.USER -> Color(100, 150, 255)
+                ClineMessage.Role.ASSISTANT -> Color(100, 255, 150)
+                ClineMessage.Role.TOOL -> Color(255, 200, 100)
+                else -> Color(220, 220, 220)
+            }
         }
 
         headerPanel.add(timestampLabel, BorderLayout.WEST)
         headerPanel.add(roleLabel, BorderLayout.CENTER)
 
-        val contentArea = JTextArea(message.content).apply {
+        val contentPanel = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
             background = Color(51, 51, 51)
-            foreground = Color(220, 220, 220)
-            lineWrap = true
-            wrapStyleWord = true
-            isEditable = false
             border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
         }
 
+        if (message.content.isNotEmpty()) {
+            val contentArea = JTextArea(message.content).apply {
+                background = Color(51, 51, 51)
+                foreground = Color(220, 220, 220)
+                lineWrap = true
+                wrapStyleWord = true
+                isEditable = false
+                border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+            }
+            contentPanel.add(contentArea)
+        }
+
+        message.toolCalls.forEach { toolCall ->
+            val toolPanel = JPanel(BorderLayout()).apply {
+                background = Color(60, 60, 60)
+                border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+            }
+
+            val toolHeader = JPanel(BorderLayout()).apply {
+                background = Color(60, 60, 60)
+                border = BorderFactory.createEmptyBorder(0, 0, 5, 0)
+            }
+
+            val toolNameLabel = JLabel("${toolCall.name}").apply {
+                foreground = Color(200, 200, 255)
+                font = font.deriveFont(font.size2D - 1f)
+            }
+
+            toolHeader.add(toolNameLabel, BorderLayout.WEST)
+            toolPanel.add(toolHeader, BorderLayout.NORTH)
+
+            val toolContent = JTextArea("${toolCall.arguments}\n\n${toolCall.output ?: ""}").apply {
+                background = Color(70, 70, 70)
+                foreground = Color(220, 220, 220)
+                lineWrap = true
+                wrapStyleWord = true
+                isEditable = false
+                border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+            }
+
+            toolPanel.add(toolContent, BorderLayout.CENTER)
+            contentPanel.add(toolPanel)
+            contentPanel.add(Box.createVerticalStrut(5))
+        }
+
         messagePanel.add(headerPanel, BorderLayout.NORTH)
-        messagePanel.add(contentArea, BorderLayout.CENTER)
+        messagePanel.add(contentPanel, BorderLayout.CENTER)
         
         chatPanel.add(messagePanel)
         chatPanel.add(Box.createVerticalStrut(1))
