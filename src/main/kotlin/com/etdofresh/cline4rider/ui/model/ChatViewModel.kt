@@ -82,6 +82,7 @@ class ChatViewModel(private val project: Project) {
     }
 
     fun loadConversation(id: String) {
+        currentConversationId = id
         messages = chatHistory.getConversationMessages(id).toMutableList()
         notifyMessageListeners()
     }
