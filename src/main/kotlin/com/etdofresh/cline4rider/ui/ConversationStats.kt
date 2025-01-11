@@ -173,6 +173,16 @@ class ConversationStats : JPanel(BorderLayout()) {
         }
         
         costLabel.text = "Cost: ↑$${String.format("%.4f", promptCost)} ↓$${String.format("%.4f", completionCost)}"
-        responseTimeLabel.text = "Total Response Time: ${String.format("%.2f", totalResponseTime)}s"
+        // Get latest response time
+        val latestUserMessage = messages.lastOrNull { it.role == ClineMessage.Role.USER }
+        val latestAssistantMessage = messages.lastOrNull { 
+            it.role == ClineMessage.Role.ASSISTANT && 
+            (latestUserMessage == null || it.timestamp > latestUserMessage.timestamp)
+        }
+        val latestResponseTime = if (latestUserMessage != null && latestAssistantMessage != null) {
+            (latestAssistantMessage.timestamp - latestUserMessage.timestamp) / 1000.0
+        } else 0.0
+
+        responseTimeLabel.text = "Response Time: ${String.format("%.2f", latestResponseTime)}s (Total: ${String.format("%.2f", totalResponseTime)}s)"
     }
 }
