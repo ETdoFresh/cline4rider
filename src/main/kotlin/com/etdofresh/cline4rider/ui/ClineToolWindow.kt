@@ -37,7 +37,7 @@ import java.io.File
 class ClineToolWindow(private val project: Project, private val toolWindow: ToolWindow) {
     companion object {
         private val DEFAULT_SYSTEM_PROMPT = """You are Cline, an AI coding assistant. Your role is to help developers write, modify, and understand code. You should:
-            |
+        minimumSize = Dimension(JBUI.scale(300), JBUI.scale(100))
             |1. Provide clear, concise explanations
             |2. Write efficient, well-documented code
             |3. Follow best practices and design patterns
@@ -62,6 +62,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     private val viewModel = ChatViewModel.getInstance(project)
     private val tabbedPane = JBTabbedPane()
     private var lastSelectedTab = 0
+    private val conversationStats = ConversationStats()
     private val contentPanel = JPanel(BorderLayout()).apply {
         background = Color(45, 45, 45)
         preferredSize = Dimension(JBUI.scale(400), JBUI.scale(150))
@@ -146,10 +147,17 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         val chatAreaPanel = JPanel(BorderLayout()).apply {
             background = Color(45, 45, 45)
         }
+
+        // Create messages panel with stats and chat content
+        val messagesPanel = JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            add(conversationStats, BorderLayout.NORTH)
+            add(chatPanel, BorderLayout.CENTER)
+        }
         
         // Enable smooth scrolling
         UIManager.put("ScrollBar.smoothScrolling", true)
-        val scrollPane = JBScrollPane(chatPanel).apply {
+        val scrollPane = JBScrollPane(messagesPanel).apply {
             border = BorderFactory.createEmptyBorder()
             viewport.background = Color(45, 45, 45)
             verticalScrollBar.unitIncrement = 16
@@ -582,6 +590,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 val message = homeInputArea?.text?.trim()
                 if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
                     viewModel.createNewTask()
+                    conversationStats.updateStats(emptyList())
                     sendMessage(message)
                     homeInputArea.text = ""
                 }
@@ -597,6 +606,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             val message = homeInputArea?.text?.trim()
             if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
                 viewModel.createNewTask()
+                conversationStats.updateStats(emptyList())
                 sendMessage(message)
                 homeInputArea.text = ""
             }
@@ -702,6 +712,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 val message = homeInputArea.text?.trim()
                 if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
                     viewModel.createNewTask()
+                    conversationStats.updateStats(emptyList())
                     sendMessage(message)
                     homeInputArea.text = ""
                 }
@@ -715,11 +726,12 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         
         homeSendButton?.addActionListener {
             val message = homeInputArea?.text?.trim()
-            if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
-                viewModel.createNewTask()
-                sendMessage(message)
-                homeInputArea.text = ""
-            }
+                if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
+                    viewModel.createNewTask()
+                    conversationStats.updateStats(emptyList())
+                    sendMessage(message)
+                    homeInputArea.text = ""
+                }
         }
         
         panel.add(homeInputPanel)
@@ -761,6 +773,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         viewModel.addMessageListener { messages ->
             SwingUtilities.invokeLater {
                 refreshMessages()
+                conversationStats.updateStats(messages)
             }
         }
         
@@ -805,6 +818,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             chatPanel.removeAll()
             chatPanel.revalidate()
             chatPanel.repaint()
+            conversationStats.updateStats(emptyList())
         }
 
         sendButton.addActionListener {
