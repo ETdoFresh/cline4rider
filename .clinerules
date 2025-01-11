@@ -1,4 +1,41 @@
 <custom_rules>
+    <!-- You can add custom rules here. They are separate from the core system rules. -->
+    <custom_rule>
+        <name>Detail Task Completion Information</name>
+        <trigger>When Completing a Task</trigger>
+        <guidelines>
+            <guideline>Respond back with the task completion information</guideline>
+            <guideline>Task Title should be bold</guideline>
+            <guideline>Task Description should be detailed of everything that has been completed</guideline>
+            <guideline>Task Description should be in present tense</guideline>
+            <guideline>Task Description should be in imperative mood</guideline>
+            <guideline>Task Title and Description should begin with an action verb</guideline>
+        </guidelines>
+    </custom_rule>
+
+    <custom_rule>
+        <name>Git Commit Standard Operation</name>
+        <description>Commit and Push changes to git</description>
+        <trigger>When Committing Code</trigger>
+        <guidelines>
+            <guideline>Use present tense ("Add feature" not "Added feature")</guideline>
+            <guideline>Start with capital letter</guideline>
+            <guideline>No prefixes (like "feat:", "fix:", etc.)</guideline>
+            <guideline>Be descriptive but concise</guideline>
+            <guideline>Use dashes (-) for bullet points in multi-line messages [if necessary]</guideline>
+            <guideline>Use optional command AFTER git add . if you do not have enough details create
+                commit message</guideline>
+            <guideline>Always use --no-pager with git diff command</guideline>
+        </guidelines>
+        <commands>
+            <command>git add .</command>
+            <command>git --no-pager diff<file></command>
+            <command>git commit -m "Your commit message here"</command>
+            <command>git push</command>
+        </commands>
+    </custom_rule>
+
+    <!-- Insert additional custom rules here as needed -->
     <background>
         <information>We are porting a vscode extension call Cline to Rider</information>
     </background>
@@ -10,7 +47,8 @@
     <gradle_rules>
         <rule>Do not use --info flag unless specifically requested by user</rule>
         <rule>Do not use --debug flag unless specifically requested by user</rule>
-        <rule>Do not modify build.gradle.kts or gradle.properties unless specifically requested by user</rule>
+        <rule>Do not modify build.gradle.kts or gradle.properties unless specifically requested by
+            user</rule>
     </gradle_rules>
 
     <shell_handling>

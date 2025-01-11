@@ -49,7 +49,7 @@ class ChatViewModel(private val project: Project) {
                     return@launch
                 }
 
-                val result = apiProvider.sendMessage(content, apiKey, settings.state.provider, settings)
+                val result = apiProvider.sendMessages(messages.toList(), apiKey, settings.state.provider, settings)
                 result.fold(
                     onSuccess = { response ->
                         messages.add(response)
@@ -88,6 +88,8 @@ class ChatViewModel(private val project: Project) {
     private fun notifyStateListeners() {
         stateListeners.forEach { it(isProcessing) }
     }
+
+    fun isProcessing(): Boolean = isProcessing
 
     companion object {
         @JvmStatic

@@ -8,7 +8,10 @@ import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.dsl.builder.panel
 import com.intellij.ui.dsl.builder.rows
 import com.intellij.ui.dsl.builder.text
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
+import java.awt.Color
+import java.awt.Dimension
 import javax.swing.*
 import java.time.Instant
 import java.time.ZoneId
@@ -16,11 +19,48 @@ import java.time.format.DateTimeFormatter
 
 class ClineToolWindow(project: Project, _toolWindow: ToolWindow) {
     private val viewModel = ChatViewModel.getInstance(project)
-    private val contentPanel = JPanel(BorderLayout())
-    private val chatPanel = JPanel()
-    private val inputArea = JTextArea(3, 50)
-    private val sendButton = JButton("Send")
-    private val clearButton = JButton("Clear")
+    private val contentPanel = JPanel(BorderLayout()).apply {
+        background = Color(45, 45, 45)
+        preferredSize = Dimension(JBUI.scale(400), JBUI.scale(150))
+        minimumSize = Dimension(JBUI.scale(300), JBUI.scale(100))
+    }
+    private val chatPanel = JPanel().apply {
+        layout = BoxLayout(this, BoxLayout.Y_AXIS)
+        background = Color(45, 45, 45)
+        maximumSize = Dimension(Int.MAX_VALUE, Int.MAX_VALUE)
+    }
+    private val inputArea = JTextArea(2, 50).apply {
+        border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        background = Color(51, 51, 51)
+        foreground = Color(220, 220, 220)
+        caretColor = Color(220, 220, 220)
+        
+        // Add keyboard shortcuts
+        inputMap.put(KeyStroke.getKeyStroke("ENTER"), "send")
+        inputMap.put(KeyStroke.getKeyStroke("shift ENTER"), "newline")
+        actionMap.put("send", object : AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent) {
+                val message = text.trim()
+                if (message.isNotEmpty() && !viewModel.isProcessing()) {
+                    sendMessage(message)
+                    text = ""
+                }
+            }
+        })
+        actionMap.put("newline", object : AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent) {
+                insert("\n", caretPosition)
+            }
+        })
+    }
+    private val sendButton = JButton("Send").apply {
+        background = Color(60, 60, 60)
+        foreground = Color(220, 220, 220)
+    }
+    private val clearButton = JButton("Clear").apply {
+        background = Color(60, 60, 60)
+        foreground = Color(220, 220, 220)
+    }
 
     init {
         setupUI()
@@ -28,19 +68,49 @@ class ClineToolWindow(project: Project, _toolWindow: ToolWindow) {
     }
 
     private fun setupUI() {
-        chatPanel.layout = BoxLayout(chatPanel, BoxLayout.Y_AXIS)
-        val scrollPane = JBScrollPane(chatPanel)
+        // Enable smooth scrolling
+        UIManager.put("ScrollBar.smoothScrolling", true)
+        val scrollPane = JBScrollPane(chatPanel).apply {
+            border = BorderFactory.createEmptyBorder()
+            viewport.background = Color(45, 45, 45)
+            verticalScrollBar.unitIncrement = 16
+            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            preferredSize = Dimension(Int.MAX_VALUE, JBUI.scale(200))
+        }
 
-        val inputPanel = JPanel(BorderLayout())
-        inputPanel.add(JBScrollPane(inputArea), BorderLayout.CENTER)
+        val inputPanel = JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        }
+        
+        val inputScrollPane = JBScrollPane(inputArea).apply {
+            border = BorderFactory.createLineBorder(Color(60, 60, 60))
+            preferredSize = Dimension(0, JBUI.scale(40))
+            minimumSize = Dimension(0, JBUI.scale(40))
+        }
+        
+        inputPanel.add(inputScrollPane, BorderLayout.CENTER)
 
-        val buttonPanel = JPanel()
-        buttonPanel.add(sendButton)
+        val buttonPanel = JPanel().apply {
+            background = Color(45, 45, 45)
+            layout = BoxLayout(this, BoxLayout.X_AXIS)
+            border = BorderFactory.createEmptyBorder(5, 0, 0, 0)
+        }
+        
+        buttonPanel.add(Box.createHorizontalGlue())
         buttonPanel.add(clearButton)
-        inputPanel.add(buttonPanel, BorderLayout.EAST)
+        buttonPanel.add(Box.createHorizontalStrut(5))
+        buttonPanel.add(sendButton)
+        
+        inputPanel.add(buttonPanel, BorderLayout.SOUTH)
 
         contentPanel.add(scrollPane, BorderLayout.CENTER)
         contentPanel.add(inputPanel, BorderLayout.SOUTH)
+        
+        // Set constraints for the tool window
+        contentPanel.minimumSize = Dimension(JBUI.scale(300), JBUI.scale(200))
+        contentPanel.maximumSize = Dimension(JBUI.scale(800), JBUI.scale(800))
 
         clearButton.addActionListener {
             viewModel.clearMessages()
@@ -89,29 +159,55 @@ class ClineToolWindow(project: Project, _toolWindow: ToolWindow) {
 
         chatPanel.revalidate()
         chatPanel.repaint()
+        
+        // Auto-scroll to bottom
+        SwingUtilities.invokeLater {
+            val vertical = chatPanel.parent.parent as JScrollPane
+            vertical.verticalScrollBar.value = vertical.verticalScrollBar.maximum
+        }
     }
 
     private fun addMessageToUI(message: ClineMessage) {
-        val messagePanel = panel {
-            row {
-                val timestamp = Instant.ofEpochMilli(message.timestamp)
-                    .atZone(ZoneId.systemDefault())
-                val formatter = DateTimeFormatter.ofPattern("HH:mm:ss")
-                label("[${formatter.format(timestamp)}] ${message.role}:")
-            }
-            row {
-                textArea()
-                    .text(message.content)
-                    .rows(3)
-                    .resizableColumn()
-                    .enabled(false)
-            }
-            row {
-                cell(JSeparator())
-            }
+        val timestamp = Instant.ofEpochMilli(message.timestamp)
+            .atZone(ZoneId.systemDefault())
+        val formatter = DateTimeFormatter.ofPattern("HH:mm:ss")
+        
+        val messagePanel = JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
         }
 
+        val headerPanel = JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            border = BorderFactory.createEmptyBorder(0, 0, 5, 0)
+        }
+
+        val timestampLabel = JLabel("[${formatter.format(timestamp)}]").apply {
+            foreground = Color(150, 150, 150)
+            font = font.deriveFont(font.size2D - 1f)
+        }
+        
+        val roleLabel = JLabel(" ${message.role}:").apply {
+            foreground = Color(220, 220, 220)
+        }
+
+        headerPanel.add(timestampLabel, BorderLayout.WEST)
+        headerPanel.add(roleLabel, BorderLayout.CENTER)
+
+        val contentArea = JTextArea(message.content).apply {
+            background = Color(51, 51, 51)
+            foreground = Color(220, 220, 220)
+            lineWrap = true
+            wrapStyleWord = true
+            isEditable = false
+            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        }
+
+        messagePanel.add(headerPanel, BorderLayout.NORTH)
+        messagePanel.add(contentArea, BorderLayout.CENTER)
+        
         chatPanel.add(messagePanel)
+        chatPanel.add(Box.createVerticalStrut(1))
     }
 
     fun getContent() = contentPanel

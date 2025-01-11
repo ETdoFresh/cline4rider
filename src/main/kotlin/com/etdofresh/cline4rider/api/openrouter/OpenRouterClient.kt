@@ -30,7 +30,7 @@ class OpenRouterClient(private val settings: ClineSettings) {
     private val baseUrl = "https://openrouter.ai/api/v1"
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
-    fun sendMessage(message: ClineMessage): String {
+    fun sendMessages(messages: List<ClineMessage>): String {
         val apiKey = settings.getApiKey()
         if (apiKey.isNullOrEmpty()) {
             throw OpenRouterException("OpenRouter API key is not configured")
@@ -38,7 +38,7 @@ class OpenRouterClient(private val settings: ClineSettings) {
         try {
             val request = ChatCompletionRequest(
                 model = "openai/gpt-3.5-turbo",
-                messages = listOf(Message("user", message.content)),
+                messages = messages.map { Message(it.role.toString().lowercase(), it.content) },
                 temperature = 0.7
             )
 
