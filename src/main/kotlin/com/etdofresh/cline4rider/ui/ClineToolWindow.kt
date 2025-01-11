@@ -17,6 +17,9 @@ import com.intellij.openapi.wm.ToolWindow
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTabbedPane
 import com.intellij.util.ui.JBUI
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.ui.Messages
 import java.awt.BorderLayout
 import java.awt.Color
 import java.awt.Dimension
@@ -935,77 +938,79 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     }
 
     private fun openConfigEditor(fileName: String, currentContent: String) {
-        val dialog = JDialog().apply {
-            title = "Edit $fileName"
-            modalityType = Dialog.ModalityType.APPLICATION_MODAL
-            layout = BorderLayout()
-        }
-        
-        val textArea = JTextArea(currentContent).apply {
-            font = font.deriveFont(12f)
-            background = Color(51, 51, 51)
-            foreground = Color(220, 220, 220)
-            caretColor = Color(220, 220, 220)
-            lineWrap = true
-            wrapStyleWord = true
-            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
-        }
-        
-        val scrollPane = JBScrollPane(textArea).apply {
-            border = BorderFactory.createLineBorder(Color(60, 60, 60))
-            preferredSize = Dimension(800, 600)
-        }
-        
-        val buttonPanel = JPanel().apply {
-            background = Color(45, 45, 45)
-            layout = BoxLayout(this, BoxLayout.X_AXIS)
-            border = BorderFactory.createEmptyBorder(5, 10, 5, 10)
-            
-            add(Box.createHorizontalGlue())
-            add(JButton("Save").apply {
-                background = Color(51, 102, 153)
-                foreground = Color.WHITE
-                addActionListener {
-                    saveConfigFile(fileName, textArea.text)
-                    dialog.dispose()
+        com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+            try {
+                com.intellij.openapi.command.WriteCommandAction.runWriteCommandAction(project) {
+                    // Ensure the file exists and has content
+                    val configFile = File(project.basePath, fileName)
+                    if (!configFile.exists() || configFile.readText() != currentContent) {
+                        configFile.writeText(currentContent)
+                        if (fileName == ".clinesystemprompt") {
+                            viewModel.setSystemPrompt(currentContent)
+                        }
+                    }
+
+                    // Refresh and find the virtual file
+                    val virtualFile = LocalFileSystem.getInstance().refreshAndFindFileByIoFile(configFile)
+                    
+                    if (virtualFile != null) {
+                        FileEditorManager.getInstance(project).openFile(virtualFile, true)
+                    } else {
+                        Messages.showErrorDialog(
+                            project,
+                            "Failed to open $fileName in editor",
+                            "Error Opening File"
+                        )
+                    }
                 }
-            })
-            add(Box.createHorizontalStrut(10))
-            add(JButton("Cancel").apply {
-                background = Color(60, 60, 60)
-                foreground = Color.WHITE
-                addActionListener { dialog.dispose() }
-            })
+            } catch (e: Exception) {
+                Messages.showErrorDialog(
+                    project,
+                    "Error opening file: ${e.message}",
+                    "Error"
+                )
+            }
         }
-        
-        dialog.add(scrollPane, BorderLayout.CENTER)
-        dialog.add(buttonPanel, BorderLayout.SOUTH)
-        dialog.pack()
-        dialog.setLocationRelativeTo(contentPanel)
-        dialog.isVisible = true
     }
 
     private fun readFileContent(fileName: String): String {
         return try {
-            File(project.basePath, fileName).readText()
+            com.intellij.openapi.application.ApplicationManager.getApplication()
+                .runReadAction<String> {
+                    val file = File(project.basePath, fileName)
+                    if (file.exists()) {
+                        file.readText()
+                    } else {
+                        ""
+                    }
+                }
         } catch (e: Exception) {
             ""
         }
     }
 
     private fun saveConfigFile(fileName: String, content: String) {
-        try {
-            File(project.basePath, fileName).writeText(content)
-            if (fileName == ".clinesystemprompt") {
-                viewModel.setSystemPrompt(content)
+        com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread {
+            try {
+                File(project.basePath, fileName).writeText(content)
+                if (fileName == ".clinesystemprompt") {
+                    viewModel.setSystemPrompt(content)
+                }
+                
+                // Refresh the virtual file system
+                val file = File(project.basePath, fileName)
+                com.intellij.openapi.application.ApplicationManager.getApplication().runReadAction {
+                    LocalFileSystem.getInstance().refreshAndFindFileByIoFile(file)
+                }
+            } catch (e: Exception) {
+                com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+                    Messages.showErrorDialog(
+                        project,
+                        "Failed to save $fileName: ${e.message}",
+                        "Error"
+                    )
+                }
             }
-        } catch (e: Exception) {
-            JOptionPane.showMessageDialog(
-                contentPanel,
-                "Failed to save $fileName: ${e.message}",
-                "Error",
-                JOptionPane.ERROR_MESSAGE
-            )
         }
     }
 
