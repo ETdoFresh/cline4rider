@@ -3,6 +3,10 @@ package com.etdofresh.cline4rider.ui
 import com.etdofresh.cline4rider.model.ClineMessage
 import com.etdofresh.cline4rider.ui.model.ChatViewModel
 import com.intellij.icons.AllIcons
+import com.intellij.icons.AllIcons.Actions
+import com.intellij.icons.AllIcons.Nodes
+import com.intellij.icons.AllIcons.Vcs
+import com.intellij.icons.AllIcons.General
 import com.intellij.openapi.actionSystem.ActionManager
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.Project
@@ -74,9 +78,9 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         
         // Setup tabs with icons
         tabbedPane.apply {
-            addTab("Home", AllIcons.Actions.Home, mainChatPanel)
+            addTab("Home", AllIcons.Nodes.HomeFolder, mainChatPanel)
             addTab("History", AllIcons.Vcs.History, createHistoryPanel())
-            addTab("Tasks", AllIcons.Nodes.Task, createTasksPanel())
+            addTab("Tasks", AllIcons.Nodes.Folder, createTasksPanel())
             addTab("Settings", AllIcons.General.Settings, createSettingsPanel())
             
             // Add close button to the right

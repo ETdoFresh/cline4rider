@@ -1,9 +1,9 @@
-plugins {
-  id("java")
-  id("org.jetbrains.kotlin.jvm") version "1.9.25"
-  id("org.jetbrains.intellij") version "1.17.4"
-  kotlin("plugin.serialization") version "1.9.25"
-}
+  plugins {
+    id("java")
+    id("org.jetbrains.kotlin.jvm") version "1.9.25"
+    id("org.jetbrains.intellij") version "1.17.4"
+    kotlin("plugin.serialization") version "1.9.25"
+  }
 
 group = "com.etdofresh"
 version = "1.0-SNAPSHOT"
@@ -34,7 +34,10 @@ intellij {
   type.set("IC") // Target IDE Platform
   instrumentCode.set(false) // Disable instrumentation to avoid JDK path issues
 
-  plugins.set(listOf(/* Plugin Dependencies */))
+  plugins.set(listOf(
+    "com.intellij.platform.images", // Required for AllIcons
+    "com.intellij.java" // Required for Java-related icons
+  ))
 }
 
 tasks {
