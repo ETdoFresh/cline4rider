@@ -348,32 +348,35 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
                     border = BorderFactory.createEmptyBorder(0, 0, 5, 0)
                 })
                 
-                // Get last 3 messages
-                val messages = viewModel.getMessages().takeLast(3)
-                if (messages.isEmpty()) {
+                // Get last 3 conversations
+                val conversations = viewModel.getRecentConversations().take(3)
+                if (conversations.isEmpty()) {
                     add(JLabel("No recent history", SwingConstants.LEFT).apply {
                         foreground = Color(150, 150, 150)
                         font = font.deriveFont(font.size2D - 1f)
                     })
                 } else {
-                    messages.forEach { message ->
-                        val messagePanel = JPanel(BorderLayout()).apply {
-                            background = Color(51, 51, 51)
-                            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                    conversations.forEach { conversation ->
+                        val firstUserMessage = conversation.messages.firstOrNull { it.role == "USER" }
+                        if (firstUserMessage != null) {
+                            val messagePanel = JPanel(BorderLayout()).apply {
+                                background = Color(51, 51, 51)
+                                border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                            }
+                            
+                            val content = JTextArea(firstUserMessage.content).apply {
+                                background = Color(51, 51, 51)
+                                foreground = Color(220, 220, 220)
+                                lineWrap = true
+                                wrapStyleWord = true
+                                isEditable = false
+                                border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                            }
+                            
+                            messagePanel.add(content, BorderLayout.CENTER)
+                            add(messagePanel)
+                            add(Box.createVerticalStrut(5))
                         }
-                        
-                        val content = JTextArea(message.content).apply {
-                            background = Color(51, 51, 51)
-                            foreground = Color(220, 220, 220)
-                            lineWrap = true
-                            wrapStyleWord = true
-                            isEditable = false
-                            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
-                        }
-                        
-                        messagePanel.add(content, BorderLayout.CENTER)
-                        add(messagePanel)
-                        add(Box.createVerticalStrut(5))
                     }
                 }
             }
