@@ -5,6 +5,8 @@ import com.etdofresh.cline4rider.model.ChatCompletionRequest
 import com.etdofresh.cline4rider.model.ChatCompletionResponse
 import com.etdofresh.cline4rider.model.ChatMessage
 import com.etdofresh.cline4rider.model.ClineMessage.Role
+import com.etdofresh.cline4rider.settings.ClineSettings
+import com.etdofresh.cline4rider.api.openrouter.OpenRouterClient
 import com.google.gson.Gson
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
@@ -24,38 +26,54 @@ class ApiProvider {
         .connectTimeout(Duration.ofSeconds(30))
         .build()
 
-    suspend fun sendMessage(message: String, apiKey: String): Result<ClineMessage> = withContext(Dispatchers.IO) {
+    suspend fun sendMessage(message: String, apiKey: String, provider: ClineSettings.Provider): Result<ClineMessage> = withContext(Dispatchers.IO) {
         try {
-            val chatRequest = ChatCompletionRequest(
-                model = DEFAULT_MODEL,
-                messages = listOf(ChatMessage(Role.USER, message))
-            )
+            when (provider) {
+                ClineSettings.Provider.OPENROUTER -> {
+                    val openRouterClient = OpenRouterClient()
+                    val response = openRouterClient.sendMessage(ClineMessage(Role.USER, message, System.currentTimeMillis()))
+                    val completionResponse = gson.fromJson(response, ChatCompletionResponse::class.java)
+                    
+                    val assistantMessage = completionResponse.choices.firstOrNull()?.message
+                        ?: throw Exception("No response message found")
 
-            val request = HttpRequest.newBuilder()
-                .uri(URI.create("https://api.openai.com/v1/chat/completions"))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer $apiKey")
-                .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(chatRequest)))
-                .build()
+                    Result.success(ClineMessage(
+                        content = assistantMessage.content,
+                        role = Role.ASSISTANT,
+                        timestamp = System.currentTimeMillis()
+                    ))
+                }
+                else -> {
+                    val chatRequest = ChatCompletionRequest(
+                        model = DEFAULT_MODEL,
+                        messages = listOf(ChatMessage(Role.USER, message))
+                    )
 
-            val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-            
-            if (response.statusCode() != 200) {
-                logger.error("API request failed with status ${response.statusCode()}: ${response.body()}")
-                return@withContext Result.failure(Exception("API request failed: ${response.statusCode()}"))
+                    val request = HttpRequest.newBuilder()
+                        .uri(URI.create("https://api.openai.com/v1/chat/completions"))
+                        .header("Content-Type", "application/json")
+                        .header("Authorization", "Bearer $apiKey")
+                        .POST(HttpRequest.BodyPublishers.ofString(gson.toJson(chatRequest)))
+                        .build()
+
+                    val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+                    
+                    if (response.statusCode() != 200) {
+                        logger.error("API request failed with status ${response.statusCode()}: ${response.body()}")
+                        return@withContext Result.failure(Exception("API request failed: ${response.statusCode()}"))
+                    }
+
+                    val completionResponse = gson.fromJson(response.body(), ChatCompletionResponse::class.java)
+                    val assistantMessage = completionResponse.choices.firstOrNull()?.message
+                        ?: throw Exception("No response message found")
+
+                    Result.success(ClineMessage(
+                        content = assistantMessage.content,
+                        role = Role.ASSISTANT,
+                        timestamp = System.currentTimeMillis()
+                    ))
+                }
             }
-
-            val completionResponse = gson.fromJson(response.body(), ChatCompletionResponse::class.java)
-            val assistantMessage = completionResponse.choices.firstOrNull()?.message
-                ?: throw Exception("No response message found")
-
-            val clineMessage = ClineMessage(
-                content = assistantMessage.content,
-                role = Role.ASSISTANT,
-                timestamp = System.currentTimeMillis()
-            )
-
-            Result.success(clineMessage)
         } catch (e: Exception) {
             logger.error("Error sending message to API", e)
             Result.failure(e)

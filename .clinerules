@@ -1,33 +1,15 @@
 <custom_rules>
     <background>
         <information>We are porting a vscode extension call Cline to Rider</information>
-        <information>The existing vscode extension is found in ./cline</information>
-        <information>The entry point to the extension is found in ./cline/src/extension.ts, please read before continuing</information>
-        <information>A Port to Rider Specification document exists in ./PortSpecification.md, please read before continuing</information>
     </background>
-    
-    <build_requirements>
-        <requirement>JDK 17 (JetBrains Runtime recommended)</requirement>
-        <requirement>Gradle 8.6 or later</requirement>
-        <requirement>IntelliJ Platform SDK</requirement>
-    </build_requirements>
 
     <build_instructions>
-        <step>To build the plugin: ./gradlew buildPlugin</step>
         <step>To run in development: ./gradlew runIde -q</step>
-        <step>Plugin output will be in: build/distributions/cline4rider-[version].zip</step>
     </build_instructions>
-
-    <development_notes>
-        <note>Kotlin API version is set to 1.8 to match Rider 2024.1 requirements</note>
-        <note>Code instrumentation is disabled to avoid JDK path issues</note>
-        <note>Uses Rider 2024.1.1 SDK (RD-241.14494.326)</note>
-    </development_notes>
 
     <gradle_rules>
         <rule>Do not use --info flag unless specifically requested by user</rule>
         <rule>Do not use --debug flag unless specifically requested by user</rule>
-        <rule>After each task completion, run 'clean buildPlugin' to verify compilation</rule>
         <rule>Do not modify build.gradle.kts or gradle.properties unless specifically requested by user</rule>
     </gradle_rules>
 
@@ -65,18 +47,6 @@
 
     <powershell_commands>
         <command>
-            <name>Clean Gradle Cache and Rebuild</name>
-            <script>Remove-Item -Path "$env:USERPROFILE\.gradle\caches" -Recurse -Force; ./gradlew clean --refresh-dependencies</script>
-        </command>
-        <command>
-            <name>Stop Gradle Daemons</name>
-            <script>./gradlew --stop</script>
-        </command>
-        <command>
-            <name>Build Plugin</name>
-            <script>./gradlew buildPlugin</script>
-        </command>
-        <command>
             <name>Git Add and Commit</name>
             <script>git add . ; git commit -m "$args[0]"</script>
         </command>
@@ -87,10 +57,6 @@
     </powershell_commands>
 
     <task_completion_requirements>
-        <requirement>Stop all Gradle daemons before building</requirement>
-        <requirement>Clean and rebuild the project</requirement>
         <requirement>Run IDE for testing</requirement>
-        <requirement>Verify compilation with clean buildPlugin</requirement>
-        <command>./gradlew --stop ; ./gradlew clean buildPlugin ; ./gradlew runIde -q ; ./gradlew clean buildPlugin</command>
     </task_completion_requirements>
 </custom_rules>

@@ -49,7 +49,7 @@ class ChatViewModel(private val project: Project) {
                     return@launch
                 }
 
-                val result = apiProvider.sendMessage(content, apiKey)
+                val result = apiProvider.sendMessage(content, apiKey, settings.state.provider)
                 result.fold(
                     onSuccess = { response ->
                         messages.add(response)

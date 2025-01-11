@@ -5,6 +5,8 @@ import com.etdofresh.cline4rider.api.openrouter.ChatCompletionRequest
 import com.etdofresh.cline4rider.api.openrouter.ChatCompletionResponse
 import com.etdofresh.cline4rider.api.openrouter.Message
 import com.etdofresh.cline4rider.api.openrouter.OpenRouterException
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
@@ -13,9 +15,14 @@ import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
 
-private val json = Json { prettyPrint = true }
+private val json = Json { 
+    prettyPrint = true
+    ignoreUnknownKeys = true
+    isLenient = true
+}
 
-private fun Any.toJson(): String = json.encodeToString(this)
+
+private inline fun <reified T> T.toJson(): String = json.encodeToString(this)
 
 class OpenRouterClient {
     private val client = OkHttpClient()
@@ -44,7 +51,9 @@ class OpenRouterClient {
             val responseBody = response.body?.string()
                 ?: throw OpenRouterException("Empty response body")
             
-            return responseBody
+            val parsedResponse = json.decodeFromString<ChatCompletionResponse>(responseBody)
+            return parsedResponse.choices.firstOrNull()?.message?.content
+                ?: throw OpenRouterException("No response message found")
         } catch (e: Exception) {
             throw OpenRouterException("Failed to send message", e)
         }

@@ -4,6 +4,7 @@ import com.intellij.credentialStore.CredentialAttributes
 import com.intellij.credentialStore.Credentials
 import com.intellij.credentialStore.generateServiceName
 import com.intellij.ide.passwordSafe.PasswordSafe
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.application.runReadAction
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.components.*
@@ -17,7 +18,16 @@ import com.intellij.openapi.project.Project
 class ClineSettings(private val project: Project) : PersistentStateComponent<ClineSettings.State> {
     private var myState = State()
 
+    enum class Provider {
+        OPENAI,
+        ANTHROPIC,
+        OPENROUTER,
+        DEEPSEEK,
+        OPENAI_COMPATIBLE
+    }
+
     data class State(
+        var provider: Provider = Provider.OPENAI,
         var model: String = "gpt-3.5-turbo",
         var temperature: Double = 0.7,
         var maxTokens: Int = 2048
@@ -30,11 +40,17 @@ class ClineSettings(private val project: Project) : PersistentStateComponent<Cli
     }
 
     fun getApiKey(): String? {
-        return PasswordSafe.instance.get(createCredentialAttributes())?.getPasswordAsString()
+        return ApplicationManager.getApplication().executeOnPooledThread<String?> {
+            PasswordSafe.instance.get(createCredentialAttributes())?.getPasswordAsString()
+        }.get()
     }
 
     fun setApiKey(apiKey: String) {
-        PasswordSafe.instance.set(createCredentialAttributes(), Credentials("cline", apiKey))
+        ApplicationManager.getApplication().invokeLater {
+            runWriteAction {
+                PasswordSafe.instance.set(createCredentialAttributes(), Credentials("cline", apiKey))
+            }
+        }
     }
 
     private fun createCredentialAttributes() = CredentialAttributes(
