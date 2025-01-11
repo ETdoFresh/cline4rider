@@ -464,6 +464,12 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
             SwingUtilities.invokeLater {
                 sendButton.isEnabled = !isProcessing
                 inputArea.isEnabled = !isProcessing
+                
+                // Ensure the components are enabled when not processing
+                if (!isProcessing) {
+                    sendButton.isEnabled = true
+                    inputArea.isEnabled = true
+                }
             }
         }
 
