@@ -392,9 +392,27 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
             val homeInputArea = homeInputPanel.components.find { it is JBScrollPane }?.let { it as JBScrollPane }?.viewport?.view as? JTextArea
             val homeSendButton = homeInputPanel.components.find { it is JPanel }?.let { it as JPanel }?.components?.find { it is JButton && it.text == "Send" } as? JButton
             
+            homeInputArea?.inputMap?.put(KeyStroke.getKeyStroke("ENTER"), "send")
+            homeInputArea?.inputMap?.put(KeyStroke.getKeyStroke("shift ENTER"), "newline")
+            homeInputArea?.actionMap?.put("send", object : AbstractAction() {
+                override fun actionPerformed(e: java.awt.event.ActionEvent) {
+                    val message = homeInputArea?.text?.trim()
+                    if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
+                        viewModel.createNewTask()
+                        sendMessage(message)
+                        homeInputArea.text = ""
+                    }
+                }
+            })
+            homeInputArea?.actionMap?.put("newline", object : AbstractAction() {
+                override fun actionPerformed(e: java.awt.event.ActionEvent) {
+                    homeInputArea?.insert("\n", homeInputArea.caretPosition)
+                }
+            })
+            
             homeSendButton?.addActionListener {
                 val message = homeInputArea?.text?.trim()
-                if (message != null && message.isNotEmpty()) {
+                 if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
                     viewModel.createNewTask()
                     sendMessage(message)
                     homeInputArea.text = ""
