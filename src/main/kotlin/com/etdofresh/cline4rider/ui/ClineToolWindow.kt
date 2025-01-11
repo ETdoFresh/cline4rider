@@ -30,6 +30,7 @@ import com.etdofresh.cline4rider.persistence.ChatHistory
 class ClineToolWindow(private val project: Project, private val toolWindow: ToolWindow) {
     private val viewModel = ChatViewModel.getInstance(project)
     private val tabbedPane = JBTabbedPane()
+    private var lastSelectedTab = 0
     private val contentPanel = JPanel(BorderLayout()).apply {
         background = Color(45, 45, 45)
         preferredSize = Dimension(JBUI.scale(400), JBUI.scale(150))
@@ -77,7 +78,23 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             addTab("Home", AllIcons.Nodes.HomeFolder, createHomePanel())
             addTab("Chat", AllIcons.Nodes.Folder, mainChatPanel)
             addTab("History", AllIcons.Vcs.History, createHistoryPanel())
-            addTab("Settings", AllIcons.General.Settings, createSettingsPanel())
+            addTab("Settings", AllIcons.General.Settings, JPanel())
+            
+            addChangeListener { e ->
+                val tabbedPane = e.source as JBTabbedPane
+                val newIndex = tabbedPane.selectedIndex
+                if (newIndex == 3) { // Settings tab
+                    SwingUtilities.invokeLater {
+                        tabbedPane.selectedIndex = lastSelectedTab // Return to previous tab
+                        com.intellij.openapi.options.ShowSettingsUtil.getInstance().showSettingsDialog(
+                            project,
+                            "Cline4Rider"
+                        )
+                    }
+                } else {
+                    lastSelectedTab = newIndex
+                }
+            }
             
             val tabsPanel = JPanel(BorderLayout()).apply {
                 add(tabbedPane, BorderLayout.CENTER)
@@ -403,35 +420,6 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         return JPanel(BorderLayout()).apply {
             background = Color(45, 45, 45)
             add(JLabel("Tasks View - Coming Soon", SwingConstants.CENTER))
-        }
-    }
-
-    private fun createSettingsPanel(): JPanel {
-        return JPanel(BorderLayout()).apply {
-            background = Color(45, 45, 45)
-            
-            // Create a panel with a button to open settings
-            val buttonPanel = JPanel().apply {
-                background = Color(45, 45, 45)
-                layout = BoxLayout(this, BoxLayout.Y_AXIS)
-                border = BorderFactory.createEmptyBorder(20, 20, 20, 20)
-                alignmentX = Component.CENTER_ALIGNMENT
-            }
-            
-            val openSettingsButton = JButton("Open Cline Settings").apply {
-                background = Color(60, 60, 60)
-                foreground = Color(220, 220, 220)
-                alignmentX = Component.CENTER_ALIGNMENT
-                addActionListener {
-                    com.intellij.openapi.options.ShowSettingsUtil.getInstance().showSettingsDialog(
-                        project,
-                        "Cline4Rider"
-                    )
-                }
-            }
-            
-            buttonPanel.add(openSettingsButton)
-            add(buttonPanel, BorderLayout.CENTER)
         }
     }
 
