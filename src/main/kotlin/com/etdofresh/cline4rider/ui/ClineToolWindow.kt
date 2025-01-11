@@ -199,6 +199,9 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
 
     private fun sendMessage(content: String) {
         viewModel.sendMessage(content)
+        // Create new task and switch to Current Task tab
+        viewModel.createNewTask()
+        tabbedPane.selectedIndex = 1 // Current Task is second tab
     }
 
     private fun refreshMessages() {
