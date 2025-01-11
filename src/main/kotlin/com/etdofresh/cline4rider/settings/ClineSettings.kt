@@ -40,16 +40,18 @@ class ClineSettings(private val project: Project) : PersistentStateComponent<Cli
     }
 
     fun getApiKey(): String? {
-        return ApplicationManager.getApplication().executeOnPooledThread<String?> {
-            PasswordSafe.instance.get(createCredentialAttributes())?.getPasswordAsString()
-        }.get()
+        return try {
+            com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread<String?> {
+                PasswordSafe.instance.getPassword(createCredentialAttributes())
+            }.get()
+        } catch (e: Exception) {
+            null
+        }
     }
 
     fun setApiKey(apiKey: String) {
-        ApplicationManager.getApplication().invokeLater {
-            runWriteAction {
-                PasswordSafe.instance.set(createCredentialAttributes(), Credentials("cline", apiKey))
-            }
+        com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread {
+            PasswordSafe.instance.setPassword(createCredentialAttributes(), apiKey)
         }
     }
 

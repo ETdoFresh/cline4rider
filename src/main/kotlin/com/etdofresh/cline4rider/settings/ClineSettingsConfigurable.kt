@@ -66,52 +66,55 @@ class ClineSettingsConfigurable(private val project: Project) : Configurable {
 
     override fun isModified(): Boolean {
         val settings = ClineSettings.getInstance(project)
+        val currentApiKey = settings.getApiKey() ?: ""
+        val newApiKey = String(apiKeyField.password)
         
-        // Check if we're on the EDT and warn if we are
-        if (com.intellij.openapi.application.ApplicationManager.getApplication().isDispatchThread) {
-            com.intellij.openapi.diagnostic.Logger.getInstance(ClineSettingsConfigurable::class.java)
-                .warn("isModified called on EDT")
+        return try {
+            newApiKey != currentApiKey ||
+                    providerField.selectedItem != settings.state.provider ||
+                    modelField.text != settings.state.model ||
+                    temperatureField.text != settings.state.temperature.toString() ||
+                    maxTokensField.text != settings.state.maxTokens.toString()
+        } catch (e: Exception) {
+            // If there's an error accessing the API key, consider the form modified
+            true
         }
-        
-        return apiKeyField.password.joinToString("") != settings.getApiKey() ||
-                providerField.selectedItem != settings.state.provider ||
-                modelField.text != settings.state.model ||
-                temperatureField.text != settings.state.temperature.toString() ||
-                maxTokensField.text != settings.state.maxTokens.toString()
     }
 
     override fun apply() {
         val settings = ClineSettings.getInstance(project)
-        val apiKey = apiKeyField.password.joinToString("")
         
-        // Update non-sensitive settings on EDT
+        // Save API key in background
+        val apiKey = String(apiKeyField.password)
+        if (apiKey.isNotEmpty()) {
+            com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread {
+                settings.setApiKey(apiKey)
+            }
+        }
+        
+        // Update other settings
         settings.state.provider = providerField.selectedItem as ClineSettings.Provider
         settings.state.model = modelField.text
         settings.state.temperature = temperatureField.text.toDoubleOrNull() ?: 0.7
         settings.state.maxTokens = maxTokensField.text.toIntOrNull() ?: 2048
-        
-        // Run API key setting in background
-        com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread {
-            settings.setApiKey(apiKey)
-        }
     }
 
     override fun reset() {
         val settings = ClineSettings.getInstance(project)
         
-        // Initialize UI components first
-        providerField.selectedItem = settings.state.provider
-        modelField.text = settings.state.model
-        temperatureField.text = settings.state.temperature.toString()
-        maxTokensField.text = settings.state.maxTokens.toString()
-        
-        // Run API key retrieval in background
+        // Reset API key in background
         com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread {
             val apiKey = settings.getApiKey()
             com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
                 apiKeyField.text = apiKey ?: ""
             }
         }
+        
+        // Reset other fields
+        providerField.selectedItem = settings.state.provider
+        modelField.text = settings.state.model
+        temperatureField.text = settings.state.temperature.toString()
+        maxTokensField.text = settings.state.maxTokens.toString()
     }
 
     override fun getDisplayName() = "Cline4Rider"

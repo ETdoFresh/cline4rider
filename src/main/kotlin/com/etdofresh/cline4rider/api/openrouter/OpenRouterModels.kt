@@ -10,7 +10,8 @@ data class ChatCompletionRequest(
     val max_tokens: Int? = null,
     val top_p: Double? = null,
     val frequency_penalty: Double? = null,
-    val presence_penalty: Double? = null
+    val presence_penalty: Double? = null,
+    val stream: Boolean = false
 )
 
 @Serializable
@@ -18,7 +19,26 @@ data class ChatCompletionResponse(
     val id: String,
     val model: String,
     val choices: List<Choice>,
-    val usage: Usage
+    val usage: Usage? = null
+)
+
+@Serializable
+data class ChatCompletionChunk(
+    val id: String,
+    val model: String,
+    val choices: List<ChunkChoice>
+)
+
+@Serializable
+data class ChunkChoice(
+    val delta: DeltaMessage,
+    val finish_reason: String? = null
+)
+
+@Serializable
+data class DeltaMessage(
+    val role: String? = null,
+    val content: String? = null
 )
 
 @Serializable

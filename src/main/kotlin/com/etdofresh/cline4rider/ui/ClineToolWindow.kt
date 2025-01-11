@@ -747,8 +747,24 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         
         viewModel.addHistoryListener { conversations ->
             SwingUtilities.invokeLater {
-                refreshHomePanel()
+                // Refresh history panel
                 refreshHistory()
+                
+                // Refresh home panel
+                homePanel.removeAll()
+                homePanel.add(createHomePanel())
+                
+                // Revalidate and repaint all components
+                homePanel.revalidate()
+                homePanel.repaint()
+                historyContent.revalidate()
+                historyContent.repaint()
+                tabbedPane.revalidate()
+                tabbedPane.repaint()
+                
+                // Force layout update
+                contentPanel.validate()
+                contentPanel.repaint()
             }
         }
 
