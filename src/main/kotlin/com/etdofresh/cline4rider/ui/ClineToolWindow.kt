@@ -148,10 +148,30 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             background = Color(45, 45, 45)
         }
 
-        // Create messages panel with stats and chat content
+        // Create header panel with response time
+        val headerPanel = JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            border = BorderFactory.createEmptyBorder(5, 10, 5, 10)
+        }
+        
+        val responseTimeLabel = JLabel("Response Time: 0.00s").apply {
+            foreground = Color(180, 180, 180)
+            font = font.deriveFont(font.size2D - 1f)
+        }
+        headerPanel.add(responseTimeLabel, BorderLayout.EAST)
+        
+        // Create messages panel with header, stats and chat content
         val messagesPanel = JPanel(BorderLayout()).apply {
             background = Color(45, 45, 45)
-            add(conversationStats, BorderLayout.NORTH)
+            
+            // Create top panel for header and stats
+            val topPanel = JPanel(BorderLayout()).apply {
+                background = Color(45, 45, 45)
+                add(headerPanel, BorderLayout.NORTH)
+                add(conversationStats, BorderLayout.SOUTH)
+            }
+            
+            add(topPanel, BorderLayout.NORTH)
             add(chatPanel, BorderLayout.CENTER)
         }
         
@@ -774,6 +794,17 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             SwingUtilities.invokeLater {
                 refreshMessages()
                 conversationStats.updateStats(messages)
+                
+                // Update response time in header
+                val latestUserMessage = messages.lastOrNull { it.role == ClineMessage.Role.USER }
+                val latestAssistantMessage = messages.lastOrNull { 
+                    it.role == ClineMessage.Role.ASSISTANT && 
+                    (latestUserMessage == null || it.timestamp > latestUserMessage.timestamp)
+                }
+                val responseTime = if (latestUserMessage != null && latestAssistantMessage != null) {
+                    (latestAssistantMessage.timestamp - latestUserMessage.timestamp) / 1000.0
+                } else 0.0
+                responseTimeLabel.text = "Response Time: ${String.format("%.2f", responseTime)}s"
             }
         }
         
