@@ -109,7 +109,7 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
             horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
             preferredSize = Dimension(Int.MAX_VALUE, JBUI.scale(200))
         }
-
+        
         val inputPanel = createInputPanel()
         
         panel.add(scrollPane, BorderLayout.CENTER)
