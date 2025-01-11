@@ -31,14 +31,10 @@ class ApiProvider {
             when (provider) {
                 ClineSettings.Provider.OPENROUTER -> {
                     val openRouterClient = OpenRouterClient(settings)
-                    val response = openRouterClient.sendMessage(ClineMessage(Role.USER, message, System.currentTimeMillis()))
-                    val completionResponse = gson.fromJson(response, ChatCompletionResponse::class.java)
+                    val responseContent = openRouterClient.sendMessage(ClineMessage(Role.USER, message, System.currentTimeMillis()))
                     
-                    val assistantMessage = completionResponse.choices.firstOrNull()?.message
-                        ?: throw Exception("No response message found")
-
                     Result.success(ClineMessage(
-                        content = assistantMessage.content,
+                        content = responseContent,
                         role = Role.ASSISTANT,
                         timestamp = System.currentTimeMillis()
                     ))
