@@ -5,6 +5,8 @@ data class ClineMessage(
     val content: String,
     val timestamp: Long,
     val toolCalls: List<ToolCall> = emptyList(),
+    val tokens: Int? = null,
+    val cachedTokens: Int? = null,
     val cost: Double? = null,
     val cacheDiscount: Double? = null
 ) {

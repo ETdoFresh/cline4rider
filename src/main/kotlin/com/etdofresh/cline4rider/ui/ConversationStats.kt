@@ -34,14 +34,14 @@ class ConversationStats : JPanel(BorderLayout()) {
         isBorderPainted = false
         foreground = Color(100, 150, 255)
     }
-    private val tokensLabel = JLabel().apply {
+    private val apiTokensLabel = JLabel().apply {
         foreground = Color(180, 180, 180)
+    }
+    private val cachedTokensLabel = JLabel().apply {
+        foreground = Color(100, 200, 100)  // Green color for savings
     }
     private val costLabel = JLabel().apply {
         foreground = Color(180, 180, 180)
-    }
-    private val cacheLabel = JLabel().apply {
-        foreground = Color(100, 200, 100)  // Green color for savings
     }
     
     private var isCollapsed = false
@@ -70,11 +70,11 @@ class ConversationStats : JPanel(BorderLayout()) {
         
         // Setup stats panel
         statsPanel.background = Color(40, 40, 40)
-        statsPanel.add(tokensLabel)
+        statsPanel.add(apiTokensLabel)
+        statsPanel.add(Box.createHorizontalStrut(10))
+        statsPanel.add(cachedTokensLabel)
         statsPanel.add(Box.createHorizontalStrut(10))
         statsPanel.add(costLabel)
-        statsPanel.add(Box.createHorizontalStrut(10))
-        statsPanel.add(cacheLabel)
         
         // Add components
         add(initialRequestPanel, BorderLayout.CENTER)
@@ -125,25 +125,28 @@ class ConversationStats : JPanel(BorderLayout()) {
             updateRequestText()
         }
         
-        // Calculate total tokens (assuming 4 chars per token as a rough estimate)
-        val totalTokens = messages.sumOf { it.content.length } / 4
-        tokensLabel.text = when {
-            totalTokens >= 1_000_000 -> String.format("%.1fM tokens", totalTokens / 1_000_000.0)
-            totalTokens >= 1_000 -> String.format("%.1fK tokens", totalTokens / 1_000.0)
-            else -> "$totalTokens tokens"
-        }
+        // Calculate prompt and completion tokens
+        val promptTokens = messages.filter { it.role == ClineMessage.Role.USER }
+            .sumOf { it.tokens ?: (it.content.length / 4) }
+        val completionTokens = messages.filter { it.role == ClineMessage.Role.ASSISTANT }
+            .sumOf { it.tokens ?: (it.content.length / 4) }
         
-        // Calculate total cost and cache savings
-        val totalCost = messages.sumOf { it.cost ?: 0.0 }
-        val totalCacheSavings = messages.sumOf { it.cacheDiscount ?: 0.0 }
-        costLabel.text = String.format("$%.4f", totalCost)
+        // Calculate cached tokens and costs
+        val cachedTokens = messages.sumOf { it.cachedTokens ?: 0 }
+        val promptCost = messages.sumOf { if (it.role == ClineMessage.Role.USER) (it.cost ?: 0.0) else 0.0 }
+        val completionCost = messages.sumOf { if (it.role == ClineMessage.Role.ASSISTANT) (it.cost ?: 0.0) else 0.0 }
+        val cacheSavings = messages.sumOf { it.cacheDiscount ?: 0.0 }
+
+        // Update labels with new format
+        apiTokensLabel.text = "API Tokens: ↑$promptTokens ↓$completionTokens"
         
-        // Only show cache label if there are savings
-        if (totalCacheSavings > 0) {
-            cacheLabel.text = String.format("(Saved $%.4f)", totalCacheSavings)
-            cacheLabel.isVisible = true
+        if (cachedTokens > 0) {
+            cachedTokensLabel.text = "Cached API Tokens: $cachedTokens (-$${String.format("%.4f", cacheSavings)})"
+            cachedTokensLabel.isVisible = true
         } else {
-            cacheLabel.isVisible = false
+            cachedTokensLabel.isVisible = false
         }
+        
+        costLabel.text = "Cost: ↑$${String.format("%.4f", promptCost)} ↓$${String.format("%.4f", completionCost)}"
     }
 }
