@@ -79,8 +79,8 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         // Setup tabs with icons
         tabbedPane.apply {
             addTab("Home", AllIcons.Nodes.HomeFolder, mainChatPanel)
+            addTab("Current Task", AllIcons.Nodes.Folder, createTasksPanel())
             addTab("History", AllIcons.Vcs.History, createHistoryPanel())
-            addTab("Tasks", AllIcons.Nodes.Folder, createTasksPanel())
             addTab("Settings", AllIcons.General.Settings, createSettingsPanel())
             
             val tabsPanel = JPanel(BorderLayout()).apply {
