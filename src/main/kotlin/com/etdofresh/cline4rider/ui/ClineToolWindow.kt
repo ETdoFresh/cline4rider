@@ -153,12 +153,6 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         background = Color(45, 45, 45)
     }
     private var historyOffset = 0
-
-    init {
-        setupUI()
-        setupListeners()
-        refreshHistory()
-    }
     
     private fun refreshHistory() {
         if (historyContent == null) return
