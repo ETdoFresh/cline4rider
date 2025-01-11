@@ -383,6 +383,25 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
             
             add(welcomePanel)
             add(historyPanel)
+            
+            // Add input panel for new task
+            val homeInputPanel = createInputPanel().apply {
+                border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
+            }
+            
+            val homeInputArea = homeInputPanel.components.find { it is JBScrollPane }?.let { it as JBScrollPane }?.viewport?.view as? JTextArea
+            val homeSendButton = homeInputPanel.components.find { it is JPanel }?.let { it as JPanel }?.components?.find { it is JButton && it.text == "Send" } as? JButton
+            
+            homeSendButton?.addActionListener {
+                val message = homeInputArea?.text?.trim()
+                if (message != null && message.isNotEmpty()) {
+                    viewModel.createNewTask()
+                    sendMessage(message)
+                    homeInputArea.text = ""
+                }
+            }
+            
+            add(homeInputPanel)
         }
     }
 
