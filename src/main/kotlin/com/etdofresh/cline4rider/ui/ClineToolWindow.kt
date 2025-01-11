@@ -59,8 +59,6 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         isEnabled = true
         isFocusable = true
         
-        // Debug
-        println("Creating input area with editable=${isEditable}, enabled=${isEnabled}, focusable=${isFocusable}")
     }
     private val sendButton = JButton("Send").apply {
         background = Color(60, 60, 60)
@@ -188,7 +186,6 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             isEnabled = true
             isFocusable = true
             border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
-            println("Created new input area: editable=$isEditable, enabled=$isEnabled, focusable=$isFocusable")
         }
 
         // Create the scroll pane with the new text area
@@ -738,9 +735,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     
     private fun setupListeners() {
         viewModel.addMessageListener { messages ->
-            println("Message listener triggered with ${messages.size} messages")
             SwingUtilities.invokeLater {
-                println("Refreshing UI with messages: $messages")
                 refreshMessages()
             }
         }
@@ -837,28 +832,20 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     }
 
     private fun refreshMessages() {
-        println("Refreshing messages - current message count: ${viewModel.getMessages().size}")
         chatPanel.removeAll()
-        println("Chat panel cleared")
 
         viewModel.getMessages().forEach { message ->
-            println("Adding message: ${message.content}")
             addMessageToUI(message)
         }
 
-        println("Messages added, revalidating UI")
         chatPanel.revalidate()
         chatPanel.repaint()
         
         // Auto-scroll to bottom
         SwingUtilities.invokeLater {
-            println("Attempting auto-scroll")
             val vertical = chatPanel.parent.parent as? JScrollPane
             if (vertical != null) {
-                println("Scroll pane found, setting scroll position")
                 vertical.verticalScrollBar.value = vertical.verticalScrollBar.maximum
-            } else {
-                println("Scroll pane not found!")
             }
         }
     }
