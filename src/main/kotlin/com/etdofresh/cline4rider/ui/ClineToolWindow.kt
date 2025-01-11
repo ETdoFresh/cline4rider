@@ -377,6 +377,12 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
 
     private fun sendMessage(content: String) {
         if (viewModel.isProcessing()) {
+            JOptionPane.showMessageDialog(
+                contentPanel,
+                "Please wait for the current message to finish processing",
+                "Processing",
+                JOptionPane.INFORMATION_MESSAGE
+            )
             return
         }
         
@@ -391,10 +397,18 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
             return
         }
         
-        viewModel.sendMessage(content)
-        // Create new task and switch to Current Task tab
-        viewModel.createNewTask()
-        tabbedPane.selectedIndex = 1 // Current Task is second tab
+        try {
+            viewModel.sendMessage(content)
+            // Switch to chat tab to show the conversation
+            tabbedPane.selectedIndex = 1
+        } catch (e: Exception) {
+            JOptionPane.showMessageDialog(
+                contentPanel,
+                "Failed to send message: ${e.message}",
+                "Error",
+                JOptionPane.ERROR_MESSAGE
+            )
+        }
     }
 
     private fun refreshMessages() {

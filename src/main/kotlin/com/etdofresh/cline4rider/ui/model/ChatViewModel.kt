@@ -137,7 +137,8 @@ class ChatViewModel(private val project: Project) {
     }
 
     fun createNewTask() {
-        clearMessages()
+        // Don't clear messages, just start a new conversation
+        startNewConversation()
     }
 
     fun loadConversation(conversationId: String) {
