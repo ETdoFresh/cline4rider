@@ -262,9 +262,11 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     private lateinit var historyContent: JPanel
     
     private fun refreshHistory() {
+        historyOffset = 0  // Reset offset when refreshing
+        historyContent.removeAll()  // Clear existing content
+        
         val conversations = viewModel.getRecentConversations(historyOffset)
-        if (conversations.isEmpty() && historyOffset == 0) {
-            historyContent.removeAll()
+        if (conversations.isEmpty()) {
             historyContent.add(JLabel("No conversation history", SwingConstants.CENTER).apply {
                 foreground = Color(150, 150, 150)
                 font = font.deriveFont(font.size2D - 1f)
@@ -275,8 +277,9 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 historyContent.add(conversationPanel)
                 historyContent.add(Box.createVerticalStrut(5))
             }
-            historyOffset += conversations.size
+            historyOffset = conversations.size  // Update offset with new size
         }
+        
         historyContent.revalidate()
         historyContent.repaint()
     }

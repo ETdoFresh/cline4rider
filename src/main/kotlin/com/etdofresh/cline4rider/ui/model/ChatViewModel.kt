@@ -156,8 +156,11 @@ class ChatViewModel(private val project: Project) {
         chatHistory.deleteConversation(conversationId)
         if (conversationId == currentConversationId) {
             startNewConversation()
+            notifyMessageListeners()
         }
         notifyHistoryListeners()
+        // Also notify home panel to refresh its recent history
+        historyListeners.forEach { it(getRecentConversations()) }
     }
 
     companion object {
