@@ -5,6 +5,7 @@ import com.etdofresh.cline4rider.model.ClineMessage.Role
 import com.intellij.openapi.components.*
 import com.intellij.openapi.project.Project
 import com.intellij.util.xmlb.XmlSerializerUtil
+import com.intellij.util.xmlb.annotations.Attribute
 import com.intellij.util.xmlb.annotations.Tag
 import com.intellij.util.xmlb.annotations.XCollection
 
@@ -14,23 +15,64 @@ import com.intellij.util.xmlb.annotations.XCollection
 )
 class ChatHistory : PersistentStateComponent<ChatHistory> {
     @XCollection
-    private var messages: MutableList<SerializableMessage> = mutableListOf()
+    private var conversations: MutableList<Conversation> = mutableListOf()
+    private var currentConversationId: String? = null
 
     companion object {
+        private const val PAGE_SIZE = 10
         fun getInstance(project: Project): ChatHistory = project.service()
     }
 
-    fun addMessage(message: ClineMessage) {
-        messages.add(SerializableMessage.fromClineMessage(message))
+    @Tag("conversation")
+    class Conversation {
+        @Attribute
+        var id: String = ""
+        @Attribute
+        var timestamp: Long = 0
+        @XCollection
+        var messages: MutableList<SerializableMessage> = mutableListOf()
+
+        constructor() // Required for serialization
+
+        constructor(id: String, timestamp: Long) {
+            this.id = id
+            this.timestamp = timestamp
+        }
     }
 
-    fun getMessages(): List<ClineMessage> {
-        return messages.map { it.toClineMessage() }
+    fun startNewConversation(): String {
+        val conversationId = System.currentTimeMillis().toString()
+        currentConversationId = conversationId
+        conversations.add(Conversation(conversationId, System.currentTimeMillis()))
+        return conversationId
     }
 
-    fun clearMessages() {
-        messages.clear()
+    fun addMessage(conversationId: String, message: ClineMessage) {
+        conversations.find { it.id == conversationId }?.messages?.add(
+            SerializableMessage.fromClineMessage(message)
+        )
     }
+
+    fun getConversationMessages(conversationId: String): List<ClineMessage> {
+        return conversations.find { it.id == conversationId }?.messages
+            ?.map { it.toClineMessage() } ?: emptyList()
+    }
+
+    fun getRecentConversations(offset: Int = 0): List<Conversation> {
+        return conversations.sortedByDescending { it.timestamp }
+            .drop(offset)
+            .take(PAGE_SIZE)
+    }
+
+    fun hasMoreConversations(offset: Int): Boolean {
+        return conversations.size > offset + PAGE_SIZE
+    }
+
+    fun clearConversation(conversationId: String) {
+        conversations.find { it.id == conversationId }?.messages?.clear()
+    }
+
+    fun getCurrentConversationId(): String? = currentConversationId
 
     override fun getState(): ChatHistory = this
 

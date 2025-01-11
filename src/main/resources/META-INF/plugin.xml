@@ -30,6 +30,8 @@
     
     <!-- Project-level service for per-project state -->
     <projectService serviceImplementation="com.etdofresh.cline4rider.ClineProjectService"/>
+    <!-- Chat history persistence service -->
+    <projectService serviceImplementation="com.etdofresh.cline4rider.persistence.ChatHistory"/>
     
     <!-- Startup activity for project initialization -->
     <postStartupActivity implementation="com.etdofresh.cline4rider.startup.ClineStartupActivity"/>

@@ -21,6 +21,8 @@ import javax.swing.*
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.awt.Component
+import com.etdofresh.cline4rider.persistence.ChatHistory
 
 class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
     private val viewModel = ChatViewModel.getInstance(project)
@@ -144,10 +146,123 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
     }
 
     private fun createHistoryPanel(): JPanel {
-        return JPanel(BorderLayout()).apply {
+        val panel = JPanel(BorderLayout()).apply {
             background = Color(45, 45, 45)
-            add(JLabel("History View - Coming Soon", SwingConstants.CENTER))
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
         }
+        
+        val scrollPane = JBScrollPane().apply {
+            border = BorderFactory.createEmptyBorder()
+            viewport.background = Color(45, 45, 45)
+            verticalScrollBar.unitIncrement = 16
+            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+        }
+        
+        val historyContent = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            background = Color(45, 45, 45)
+        }
+        
+        val loadMoreButton = JButton("Load More...").apply {
+            background = Color(60, 60, 60)
+            foreground = Color(220, 220, 220)
+            isVisible = false
+            alignmentX = Component.CENTER_ALIGNMENT
+        }
+        
+        var offset = 0
+        
+        fun refreshHistory() {
+            val conversations = viewModel.getRecentConversations(offset)
+            if (conversations.isNotEmpty()) {
+            conversations.forEach { conversation: ChatHistory.Conversation ->
+                    val conversationPanel = createConversationPanel(conversation)
+                    historyContent.add(conversationPanel)
+                    historyContent.add(Box.createVerticalStrut(5))
+                }
+                offset += conversations.size
+                loadMoreButton.isVisible = viewModel.hasMoreConversations(offset)
+            }
+            historyContent.revalidate()
+            historyContent.repaint()
+        }
+        
+        loadMoreButton.addActionListener {
+            refreshHistory()
+        }
+        
+        // Initial load
+        refreshHistory()
+        
+        scrollPane.viewport.view = historyContent
+        panel.add(scrollPane, BorderLayout.CENTER)
+        panel.add(loadMoreButton, BorderLayout.SOUTH)
+        
+        return panel
+    }
+    
+    private fun createConversationPanel(conversation: ChatHistory.Conversation): JPanel {
+        val panel = JPanel(BorderLayout()).apply {
+            background = Color(51, 51, 51)
+            border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        }
+        
+        val timestamp = Instant.ofEpochMilli(conversation.timestamp)
+            .atZone(ZoneId.systemDefault())
+        val formatter = DateTimeFormatter.ofPattern("MMM dd, HH:mm:ss")
+        
+        val headerPanel = JPanel(BorderLayout()).apply {
+            background = Color(51, 51, 51)
+            border = BorderFactory.createEmptyBorder(0, 0, 5, 0)
+        }
+        
+        val timestampLabel = JLabel(formatter.format(timestamp)).apply {
+            foreground = Color(150, 150, 150)
+            font = font.deriveFont(font.size2D - 1f)
+        }
+        
+        headerPanel.add(timestampLabel, BorderLayout.WEST)
+        
+        val contentPanel = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            background = Color(51, 51, 51)
+        }
+        
+        conversation.messages.take(3).forEach { message ->
+            val messagePanel = JPanel(BorderLayout()).apply {
+                background = Color(60, 60, 60)
+                border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+            }
+            
+            val content = JTextArea().apply {
+                text = message.content
+                background = Color(60, 60, 60)
+                foreground = Color(220, 220, 220)
+                lineWrap = true
+                wrapStyleWord = true
+                isEditable = false
+                border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+            }
+            
+            messagePanel.add(content, BorderLayout.CENTER)
+            contentPanel.add(messagePanel)
+            contentPanel.add(Box.createVerticalStrut(5))
+        }
+        
+        if (conversation.messages.size > 3) {
+            val moreLabel = JLabel("...${conversation.messages.size - 3} more messages").apply {
+                foreground = Color(150, 150, 150)
+                font = font.deriveFont(font.size2D - 1f)
+                alignmentX = Component.RIGHT_ALIGNMENT
+            }
+            contentPanel.add(moreLabel)
+        }
+        
+        panel.add(headerPanel, BorderLayout.NORTH)
+        panel.add(contentPanel, BorderLayout.CENTER)
+        
+        return panel
     }
 
     private fun createTasksPanel(): JPanel {

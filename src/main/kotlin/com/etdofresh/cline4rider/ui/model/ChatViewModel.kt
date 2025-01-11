@@ -3,33 +3,44 @@ package com.etdofresh.cline4rider.ui.model
 import com.etdofresh.cline4rider.api.ApiProvider
 import com.etdofresh.cline4rider.model.ClineMessage
 import com.etdofresh.cline4rider.model.ClineMessage.Role
+import com.etdofresh.cline4rider.persistence.ChatHistory
 import com.etdofresh.cline4rider.settings.ClineSettings
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
 import kotlinx.coroutines.*
-import java.util.concurrent.CopyOnWriteArrayList
 
 @Service(Service.Level.PROJECT)
 class ChatViewModel(private val project: Project) {
     private val logger = Logger.getInstance(ChatViewModel::class.java)
     private val apiProvider = project.getService(ApiProvider::class.java)
     private val settings = ClineSettings.getInstance(project)
-    private val messages = CopyOnWriteArrayList<ClineMessage>().apply {
-        add(ClineMessage(
+    private val chatHistory = project.getService(ChatHistory::class.java)
+    private val messageListeners = mutableListOf<(List<ClineMessage>) -> Unit>()
+    private val stateListeners = mutableListOf<(Boolean) -> Unit>()
+    private val historyListeners = mutableListOf<(List<ChatHistory.Conversation>) -> Unit>()
+    private var isProcessing = false
+    private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
+    private var currentConversationId: String? = null
+
+    init {
+        startNewConversation()
+    }
+
+    private fun startNewConversation() {
+        currentConversationId = chatHistory.startNewConversation()
+        val welcomeMessage = ClineMessage(
             ClineMessage.Role.SYSTEM,
             "Welcome to Cline for Rider! How can I assist you today?",
             System.currentTimeMillis()
-        ))
+        )
+        chatHistory.addMessage(currentConversationId!!, welcomeMessage)
+        notifyMessageListeners()
     }
-    private val messageListeners = mutableListOf<(List<ClineMessage>) -> Unit>()
-    private val stateListeners = mutableListOf<(Boolean) -> Unit>()
-    private var isProcessing = false
-    private val coroutineScope = CoroutineScope(Dispatchers.Main + Job())
 
     fun addMessageListener(listener: (List<ClineMessage>) -> Unit) {
         messageListeners.add(listener)
-        listener(messages.toList())
+        listener(getMessages())
     }
 
     fun addStateListener(listener: (Boolean) -> Unit) {
@@ -37,11 +48,16 @@ class ChatViewModel(private val project: Project) {
         listener(isProcessing)
     }
 
+    fun addHistoryListener(listener: (List<ChatHistory.Conversation>) -> Unit) {
+        historyListeners.add(listener)
+        listener(getRecentConversations())
+    }
+
     fun sendMessage(content: String) {
         if (content.isBlank() || isProcessing) return
 
         val userMessage = ClineMessage(Role.USER, content, System.currentTimeMillis())
-        messages.add(userMessage)
+        chatHistory.addMessage(currentConversationId!!, userMessage)
         notifyMessageListeners()
 
         isProcessing = true
@@ -55,10 +71,10 @@ class ChatViewModel(private val project: Project) {
                     return@launch
                 }
 
-                val result = apiProvider.sendMessages(messages.toList(), apiKey, settings.state.provider, settings)
+                val result = apiProvider.sendMessages(getMessages(), apiKey, settings.state.provider, settings)
                 result.fold(
                     onSuccess = { response ->
-                        messages.add(response)
+                        chatHistory.addMessage(currentConversationId!!, response)
                         notifyMessageListeners()
                     },
                     onFailure = { error ->
@@ -76,24 +92,38 @@ class ChatViewModel(private val project: Project) {
 
     private fun handleError(errorMessage: String) {
         logger.error(errorMessage)
-        messages.add(ClineMessage(Role.SYSTEM, errorMessage, System.currentTimeMillis()))
+        chatHistory.addMessage(currentConversationId!!, 
+            ClineMessage(Role.SYSTEM, errorMessage, System.currentTimeMillis()))
         notifyMessageListeners()
     }
 
     fun clearMessages() {
-        messages.clear()
-        messages.add(ClineMessage(
-            ClineMessage.Role.SYSTEM,
-            "New chat started. How can I assist you?",
-            System.currentTimeMillis()
-        ))
-        notifyMessageListeners()
+        currentConversationId?.let {
+            chatHistory.clearConversation(it)
+            startNewConversation()
+        }
     }
 
-    fun getMessages(): List<ClineMessage> = messages.toList()
+    fun getMessages(): List<ClineMessage> {
+        return currentConversationId?.let {
+            chatHistory.getConversationMessages(it)
+        } ?: emptyList()
+    }
+
+    fun getRecentConversations(offset: Int = 0): List<ChatHistory.Conversation> {
+        return chatHistory.getRecentConversations(offset)
+    }
+
+    fun hasMoreConversations(offset: Int): Boolean {
+        return chatHistory.hasMoreConversations(offset)
+    }
 
     private fun notifyMessageListeners() {
-        messageListeners.forEach { it(messages.toList()) }
+        messageListeners.forEach { it(getMessages()) }
+    }
+
+    private fun notifyHistoryListeners() {
+        historyListeners.forEach { it(getRecentConversations()) }
     }
 
     private fun notifyStateListeners() {
@@ -107,9 +137,16 @@ class ChatViewModel(private val project: Project) {
     }
 
     fun createNewTask() {
-        // Clear existing messages to start a new task
         clearMessages()
     }
+
+    fun loadConversation(conversationId: String) {
+        currentConversationId = conversationId
+        notifyMessageListeners()
+        notifyHistoryListeners()
+    }
+
+    fun getCurrentConversationId(): String? = currentConversationId
 
     companion object {
         @JvmStatic
