@@ -19,6 +19,7 @@ class ChatViewModel(private val project: Project) {
     private val historyListeners = mutableListOf<(List<ChatHistory.Conversation>) -> Unit>()
     private val stateListeners = mutableListOf<(Boolean) -> Unit>()
     private val chatHistory = ChatHistory.getInstance(project)
+    private var currentConversationId: String? = null
 
     fun getSystemPrompt(): String? = systemPrompt
 
@@ -87,6 +88,7 @@ class ChatViewModel(private val project: Project) {
 
     fun createNewTask() {
         messages.clear()
+        currentConversationId = null
         notifyMessageListeners()
     }
 
@@ -138,14 +140,37 @@ class ChatViewModel(private val project: Project) {
                 var currentContent = StringBuilder()
                 var errorOccurred = false
                 
+                // Create new conversation if needed and save initial messages on EDT
+                ApplicationManager.getApplication().invokeAndWait {
+                    ApplicationManager.getApplication().runWriteAction {
+                        if (currentConversationId == null) {
+                            currentConversationId = chatHistory.startNewConversation()
+                        }
+                        messagesToSend.forEach { message ->
+                            chatHistory.addMessage(currentConversationId!!, message)
+                        }
+                    }
+                }
+
+                // Handle streaming responses
                 apiClient.sendMessages(messagesToSend) { chunk ->
                     if (!errorOccurred) {
                         currentContent.append(chunk)
                         ApplicationManager.getApplication().invokeLater {
                             try {
                                 // Update the last message (assistant's message) with accumulated content
-                                messages[messages.size - 1] = messages.last().copy(content = currentContent.toString())
+                                val updatedAssistantMessage = messages.last().copy(content = currentContent.toString())
+                                messages[messages.size - 1] = updatedAssistantMessage
+                                
+                                // First update the chat history in a write action
+                                ApplicationManager.getApplication().runWriteAction {
+                                    chatHistory.addMessage(currentConversationId!!, updatedAssistantMessage)
+                                    chatHistory.saveState()
+                                }
+                                
+                                // Then notify listeners outside the write action
                                 notifyMessageListeners()
+                                notifyHistoryListeners()
                             } catch (e: Exception) {
                                 errorOccurred = true
                                 handleError(e)
@@ -156,34 +181,6 @@ class ChatViewModel(private val project: Project) {
 
                 if (!errorOccurred) {
                     ApplicationManager.getApplication().invokeLater {
-                        // Save to chat history if there's content
-                        if (currentContent.isNotEmpty()) {
-                            ApplicationManager.getApplication().runWriteAction {
-                                // Create new conversation
-                                val conversationId = chatHistory.startNewConversation()
-                                
-                                // Save all messages
-                                messages.forEach { message ->
-                                    chatHistory.addMessage(conversationId, message)
-                                }
-
-                                // Force state persistence
-                                chatHistory.saveState()
-
-                                // Ensure we're on the EDT for UI updates
-                                ApplicationManager.getApplication().invokeLater {
-                                    // Notify listeners to refresh UI
-                                    notifyHistoryListeners()
-                                    notifyMessageListeners()
-                                    
-                                    // Force refresh of history panel
-                                    val conversations = chatHistory.getRecentConversations()
-                                    historyListeners.forEach { listener ->
-                                        listener(conversations)
-                                    }
-                                }
-                            }
-                        }
                         setProcessing(false)
                     }
                 }
