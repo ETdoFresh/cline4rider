@@ -27,7 +27,7 @@ import java.time.format.DateTimeFormatter
 import java.awt.Component
 import com.etdofresh.cline4rider.persistence.ChatHistory
 
-class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
+class ClineToolWindow(private val project: Project, private val toolWindow: ToolWindow) {
     private val viewModel = ChatViewModel.getInstance(project)
     private val tabbedPane = JBTabbedPane()
     private val contentPanel = JPanel(BorderLayout()).apply {
@@ -409,7 +409,29 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
     private fun createSettingsPanel(): JPanel {
         return JPanel(BorderLayout()).apply {
             background = Color(45, 45, 45)
-            add(JLabel("Settings View - Coming Soon", SwingConstants.CENTER))
+            
+            // Create a panel with a button to open settings
+            val buttonPanel = JPanel().apply {
+                background = Color(45, 45, 45)
+                layout = BoxLayout(this, BoxLayout.Y_AXIS)
+                border = BorderFactory.createEmptyBorder(20, 20, 20, 20)
+                alignmentX = Component.CENTER_ALIGNMENT
+            }
+            
+            val openSettingsButton = JButton("Open Cline Settings").apply {
+                background = Color(60, 60, 60)
+                foreground = Color(220, 220, 220)
+                alignmentX = Component.CENTER_ALIGNMENT
+                addActionListener {
+                    com.intellij.openapi.options.ShowSettingsUtil.getInstance().showSettingsDialog(
+                        project,
+                        "Cline4Rider"
+                    )
+                }
+            }
+            
+            buttonPanel.add(openSettingsButton)
+            add(buttonPanel, BorderLayout.CENTER)
         }
     }
 
