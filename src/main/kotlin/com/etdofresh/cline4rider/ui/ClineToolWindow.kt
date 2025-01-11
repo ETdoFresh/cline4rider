@@ -2,12 +2,13 @@ package com.etdofresh.cline4rider.ui
 
 import com.etdofresh.cline4rider.model.ClineMessage
 import com.etdofresh.cline4rider.ui.model.ChatViewModel
+import com.intellij.icons.AllIcons
+import com.intellij.openapi.actionSystem.ActionManager
+import com.intellij.openapi.actionSystem.DefaultActionGroup
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.dsl.builder.panel
-import com.intellij.ui.dsl.builder.rows
-import com.intellij.ui.dsl.builder.text
+import com.intellij.ui.components.JBTabbedPane
 import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
 import java.awt.Color
@@ -17,8 +18,9 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-class ClineToolWindow(project: Project, _toolWindow: ToolWindow) {
+class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
     private val viewModel = ChatViewModel.getInstance(project)
+    private val tabbedPane = JBTabbedPane()
     private val contentPanel = JPanel(BorderLayout()).apply {
         background = Color(45, 45, 45)
         preferredSize = Dimension(JBUI.scale(400), JBUI.scale(150))
@@ -35,7 +37,6 @@ class ClineToolWindow(project: Project, _toolWindow: ToolWindow) {
         foreground = Color(220, 220, 220)
         caretColor = Color(220, 220, 220)
         
-        // Add keyboard shortcuts
         inputMap.put(KeyStroke.getKeyStroke("ENTER"), "send")
         inputMap.put(KeyStroke.getKeyStroke("shift ENTER"), "newline")
         actionMap.put("send", object : AbstractAction() {
@@ -68,6 +69,36 @@ class ClineToolWindow(project: Project, _toolWindow: ToolWindow) {
     }
 
     private fun setupUI() {
+        // Setup main chat panel
+        val mainChatPanel = createMainChatPanel()
+        
+        // Setup tabs with icons
+        tabbedPane.apply {
+            addTab("Home", AllIcons.Actions.Home, mainChatPanel)
+            addTab("History", AllIcons.Vcs.History, createHistoryPanel())
+            addTab("Tasks", AllIcons.Nodes.Task, createTasksPanel())
+            addTab("Settings", AllIcons.General.Settings, createSettingsPanel())
+            
+            // Add close button to the right
+            val closeButton = JButton(AllIcons.Actions.Close).apply {
+                toolTipText = "Close Cline"
+                addActionListener {
+                    toolWindow.hide()
+                }
+            }
+            
+            val tabsPanel = JPanel(BorderLayout()).apply {
+                add(tabbedPane, BorderLayout.CENTER)
+                add(closeButton, BorderLayout.EAST)
+            }
+            
+            contentPanel.add(tabsPanel, BorderLayout.CENTER)
+        }
+    }
+
+    private fun createMainChatPanel(): JPanel {
+        val panel = JPanel(BorderLayout())
+        
         // Enable smooth scrolling
         UIManager.put("ScrollBar.smoothScrolling", true)
         val scrollPane = JBScrollPane(chatPanel).apply {
@@ -79,6 +110,15 @@ class ClineToolWindow(project: Project, _toolWindow: ToolWindow) {
             preferredSize = Dimension(Int.MAX_VALUE, JBUI.scale(200))
         }
 
+        val inputPanel = createInputPanel()
+        
+        panel.add(scrollPane, BorderLayout.CENTER)
+        panel.add(inputPanel, BorderLayout.SOUTH)
+        
+        return panel
+    }
+
+    private fun createInputPanel(): JPanel {
         val inputPanel = JPanel(BorderLayout()).apply {
             background = Color(45, 45, 45)
             border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
@@ -104,13 +144,44 @@ class ClineToolWindow(project: Project, _toolWindow: ToolWindow) {
         buttonPanel.add(sendButton)
         
         inputPanel.add(buttonPanel, BorderLayout.SOUTH)
-
-        contentPanel.add(scrollPane, BorderLayout.CENTER)
-        contentPanel.add(inputPanel, BorderLayout.SOUTH)
         
-        // Set constraints for the tool window
-        contentPanel.minimumSize = Dimension(JBUI.scale(300), JBUI.scale(200))
-        contentPanel.maximumSize = Dimension(JBUI.scale(800), JBUI.scale(800))
+        return inputPanel
+    }
+
+    private fun createHistoryPanel(): JPanel {
+        return JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            add(JLabel("History View - Coming Soon", SwingConstants.CENTER))
+        }
+    }
+
+    private fun createTasksPanel(): JPanel {
+        return JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            add(JLabel("Tasks View - Coming Soon", SwingConstants.CENTER))
+        }
+    }
+
+    private fun createSettingsPanel(): JPanel {
+        return JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            add(JLabel("Settings View - Coming Soon", SwingConstants.CENTER))
+        }
+    }
+
+    private fun setupListeners() {
+        viewModel.addMessageListener { messages ->
+            SwingUtilities.invokeLater {
+                refreshMessages()
+            }
+        }
+
+        viewModel.addStateListener { isProcessing ->
+            SwingUtilities.invokeLater {
+                sendButton.isEnabled = !isProcessing
+                inputArea.isEnabled = !isProcessing
+            }
+        }
 
         clearButton.addActionListener {
             viewModel.clearMessages()
@@ -129,21 +200,6 @@ class ClineToolWindow(project: Project, _toolWindow: ToolWindow) {
 
         // Load initial messages
         refreshMessages()
-    }
-
-    private fun setupListeners() {
-        viewModel.addMessageListener { messages ->
-            SwingUtilities.invokeLater {
-                refreshMessages()
-            }
-        }
-
-        viewModel.addStateListener { isProcessing ->
-            SwingUtilities.invokeLater {
-                sendButton.isEnabled = !isProcessing
-                inputArea.isEnabled = !isProcessing
-            }
-        }
     }
 
     private fun sendMessage(content: String) {
