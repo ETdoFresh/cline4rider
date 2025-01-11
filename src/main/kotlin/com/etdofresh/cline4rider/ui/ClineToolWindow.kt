@@ -93,6 +93,10 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         background = Color(60, 60, 60)
         foreground = Color(220, 220, 220)
     }
+    private val responseTimeLabel = JLabel("Response Time: 0.00s").apply {
+        foreground = Color(180, 180, 180)
+        font = font.deriveFont(font.size2D - 1f)
+    }
 
     init {
         setupUI()
@@ -152,13 +156,8 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         val headerPanel = JPanel(BorderLayout()).apply {
             background = Color(45, 45, 45)
             border = BorderFactory.createEmptyBorder(5, 10, 5, 10)
+            add(responseTimeLabel, BorderLayout.EAST)
         }
-        
-        val responseTimeLabel = JLabel("Response Time: 0.00s").apply {
-            foreground = Color(180, 180, 180)
-            font = font.deriveFont(font.size2D - 1f)
-        }
-        headerPanel.add(responseTimeLabel, BorderLayout.EAST)
         
         // Create messages panel with header, stats and chat content
         val messagesPanel = JPanel(BorderLayout()).apply {
