@@ -54,7 +54,8 @@ class OpenRouterClient(private val settings: ClineSettings) {
                                 tokens_prompt = statsData.data.tokens_prompt,
                                 tokens_completion = statsData.data.tokens_completion,
                                 native_tokens_prompt = statsData.data.native_tokens_prompt,
-                                native_tokens_completion = statsData.data.native_tokens_completion
+                                native_tokens_completion = statsData.data.native_tokens_completion,
+                                cache_discount = statsData.data.cache_discount
                             )
                         } else null
                     } catch (e: Exception) {
@@ -96,7 +97,8 @@ class OpenRouterClient(private val settings: ClineSettings) {
                             ClineMessage.Role.SYSTEM -> "system"
                             else -> "user"
                         },
-                        content = it.content
+                        content = it.content,
+                        cache_control = if (it.content.length > 1024) CacheControl() else null
                     )
                 },
                 temperature = settings.state.temperature ?: 0.7,

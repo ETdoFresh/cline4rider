@@ -160,6 +160,12 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         @get:XCollection(style = XCollection.Style.v2)
         var toolCalls: MutableList<SerializableToolCall> = mutableListOf()
 
+        @get:Attribute
+        var cost: Double? = null
+
+        @get:Attribute
+        var cacheDiscount: Double? = null
+
         companion object {
             fun fromClineMessage(message: ClineMessage): SerializableMessage {
                 return SerializableMessage().apply {
@@ -169,6 +175,8 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
                     toolCalls = message.toolCalls.map { 
                         SerializableToolCall.fromToolCall(it) 
                     }.toMutableList()
+                    cost = message.cost
+                    cacheDiscount = message.cacheDiscount
                 }
             }
         }
@@ -178,7 +186,9 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
                 role = ClineMessage.Role.valueOf(role.uppercase()),
                 content = content,
                 timestamp = timestamp,
-                toolCalls = toolCalls.map { it.toToolCall() }
+                toolCalls = toolCalls.map { it.toToolCall() },
+                cost = cost,
+                cacheDiscount = cacheDiscount
             )
         }
 

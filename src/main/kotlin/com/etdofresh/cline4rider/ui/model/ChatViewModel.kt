@@ -179,16 +179,21 @@ class ChatViewModel(private val project: Project) {
 
                 // Handle streaming responses
                 var totalCost = 0.0
+                var cacheDiscount = 0.0
                 apiClient.sendMessages(messagesToSend) { chunk, stats ->
                     if (!errorOccurred) {
                         currentContent.append(chunk)
-                        stats?.total_cost?.let { totalCost = it }
+                        stats?.let { 
+                            totalCost = it.total_cost ?: 0.0
+                            cacheDiscount = it.cache_discount ?: 0.0
+                        }
                         ApplicationManager.getApplication().invokeLater {
                             try {
-                                // Update the last message (assistant's message) with accumulated content and cost
+                                // Update the last message (assistant's message) with accumulated content, cost, and cache discount
                                 val updatedAssistantMessage = messages.last().copy(
                                     content = currentContent.toString(),
-                                    cost = totalCost
+                                    cost = totalCost,
+                                    cacheDiscount = cacheDiscount
                                 )
                                 messages[messages.size - 1] = updatedAssistantMessage
                                 

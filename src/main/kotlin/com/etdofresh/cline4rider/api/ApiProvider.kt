@@ -12,7 +12,8 @@ data class ResponseStats(
     val tokens_prompt: Int? = null,
     val tokens_completion: Int? = null,
     val native_tokens_prompt: Int? = null,
-    val native_tokens_completion: Int? = null
+    val native_tokens_completion: Int? = null,
+    val cache_discount: Double? = null
 )
 
 @Service(Service.Level.PROJECT)

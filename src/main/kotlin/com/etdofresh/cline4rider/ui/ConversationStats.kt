@@ -40,6 +40,9 @@ class ConversationStats : JPanel(BorderLayout()) {
     private val costLabel = JLabel().apply {
         foreground = Color(180, 180, 180)
     }
+    private val cacheLabel = JLabel().apply {
+        foreground = Color(100, 200, 100)  // Green color for savings
+    }
     
     private var isCollapsed = false
     private var fullText = ""
@@ -70,6 +73,8 @@ class ConversationStats : JPanel(BorderLayout()) {
         statsPanel.add(tokensLabel)
         statsPanel.add(Box.createHorizontalStrut(10))
         statsPanel.add(costLabel)
+        statsPanel.add(Box.createHorizontalStrut(10))
+        statsPanel.add(cacheLabel)
         
         // Add components
         add(initialRequestPanel, BorderLayout.CENTER)
@@ -128,8 +133,17 @@ class ConversationStats : JPanel(BorderLayout()) {
             else -> "$totalTokens tokens"
         }
         
-        // Calculate total cost
+        // Calculate total cost and cache savings
         val totalCost = messages.sumOf { it.cost ?: 0.0 }
+        val totalCacheSavings = messages.sumOf { it.cacheDiscount ?: 0.0 }
         costLabel.text = String.format("$%.4f", totalCost)
+        
+        // Only show cache label if there are savings
+        if (totalCacheSavings > 0) {
+            cacheLabel.text = String.format("(Saved $%.4f)", totalCacheSavings)
+            cacheLabel.isVisible = true
+        } else {
+            cacheLabel.isVisible = false
+        }
     }
 }

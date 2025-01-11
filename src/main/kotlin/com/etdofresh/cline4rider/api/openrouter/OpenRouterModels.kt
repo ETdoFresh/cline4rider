@@ -18,7 +18,8 @@ data class GenerationData(
     val tokens_completion: Int,
     val native_tokens_prompt: Int,
     val native_tokens_completion: Int,
-    val total_cost: Double
+    val total_cost: Double,
+    val cache_discount: Double? = null
 )
 
 @Serializable
@@ -32,7 +33,13 @@ data class ChatCompletionRequest(
 @Serializable
 data class Message(
     val role: String,
-    val content: String
+    val content: String,
+    val cache_control: CacheControl? = null
+)
+
+@Serializable
+data class CacheControl(
+    val type: String = "ephemeral"
 )
 
 @Serializable
@@ -41,7 +48,8 @@ data class ChatCompletionResponse(
     val choices: List<Choice>,
     val created: Long,
     val model: String,
-    val usage: Usage? = null
+    val usage: Usage? = null,
+    val cache_discount: Double? = null
 )
 
 @Serializable
@@ -62,7 +70,8 @@ data class ChatCompletionChunk(
     val id: String,
     val choices: List<ChunkChoice>,
     val created: Long,
-    val model: String
+    val model: String,
+    val cache_discount: Double? = null
 )
 
 @Serializable
