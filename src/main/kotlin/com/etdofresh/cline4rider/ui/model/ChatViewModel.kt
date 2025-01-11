@@ -91,6 +91,11 @@ class ChatViewModel(private val project: Project) {
 
     fun isProcessing(): Boolean = isProcessing
 
+    fun createNewTask() {
+        // Clear existing messages to start a new task
+        clearMessages()
+    }
+
     companion object {
         @JvmStatic
         fun getInstance(project: Project): ChatViewModel =
