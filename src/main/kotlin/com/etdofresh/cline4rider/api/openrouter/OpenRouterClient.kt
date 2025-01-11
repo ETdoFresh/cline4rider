@@ -35,11 +35,34 @@ class OpenRouterClient(private val settings: ClineSettings) {
         if (apiKey.isNullOrEmpty()) {
             throw OpenRouterException("OpenRouter API key is not configured")
         }
+        
+        // Validate messages
+        if (messages.isEmpty()) {
+            throw OpenRouterException("Message list cannot be empty")
+        }
+        
+        // Validate message content
+        messages.forEach { message ->
+            if (message.content.isBlank()) {
+                throw OpenRouterException("Message content cannot be blank")
+            }
+        }
+
         try {
             val request = ChatCompletionRequest(
-                model = "openai/gpt-3.5-turbo",
-                messages = messages.map { Message(it.role.toString().lowercase(), it.content) },
-                temperature = 0.7
+                model = settings.state.model ?: "openai/gpt-3.5-turbo",
+                messages = messages.map { 
+                    Message(
+                        role = when (it.role) {
+                            ClineMessage.Role.USER -> "user"
+                            ClineMessage.Role.ASSISTANT -> "assistant"
+                            ClineMessage.Role.SYSTEM -> "system"
+                            else -> "user"
+                        },
+                        content = it.content
+                    )
+                },
+                temperature = settings.state.temperature ?: 0.7
             )
 
             val requestBody = request.toJson().toRequestBody(jsonMediaType)
@@ -53,7 +76,11 @@ class OpenRouterClient(private val settings: ClineSettings) {
 
             val response: Response = client.newCall(httpRequest).execute()
             if (!response.isSuccessful) {
-                throw OpenRouterException("API request failed: ${response.code} ${response.message}")
+                val errorBody = response.body?.string() ?: "No error details"
+                throw OpenRouterException("""
+                    API request failed: ${response.code} ${response.message}
+                    Error details: $errorBody
+                """.trimIndent())
             }
 
             val responseBody = response.body?.string()

@@ -78,8 +78,8 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         
         // Setup tabs with icons
         tabbedPane.apply {
-            addTab("Home", AllIcons.Nodes.HomeFolder, mainChatPanel)
-            addTab("Current Task", AllIcons.Nodes.Folder, createTasksPanel())
+            addTab("Home", AllIcons.Nodes.HomeFolder, createHomePanel())
+            addTab("Chat", AllIcons.Nodes.Folder, mainChatPanel)
             addTab("History", AllIcons.Vcs.History, createHistoryPanel())
             addTab("Settings", AllIcons.General.Settings, createSettingsPanel())
             
@@ -164,6 +164,69 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         }
     }
 
+    private fun createHomePanel(): JPanel {
+        return JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            
+            // Add welcome message
+            val welcomePanel = JPanel(BorderLayout()).apply {
+                background = Color(45, 45, 45)
+                border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
+                add(JLabel("Welcome to Cline for Rider!", SwingConstants.CENTER).apply {
+                    foreground = Color(220, 220, 220)
+                    font = font.deriveFont(font.size2D + 2f)
+                })
+            }
+            
+            // Add recent history section
+            val historyPanel = JPanel(BorderLayout()).apply {
+                background = Color(45, 45, 45)
+                border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
+                layout = BoxLayout(this, BoxLayout.Y_AXIS)
+                
+                // Add section header
+                add(JLabel("Recent History", SwingConstants.LEFT).apply {
+                    foreground = Color(200, 200, 200)
+                    font = font.deriveFont(font.size2D + 1f)
+                    border = BorderFactory.createEmptyBorder(0, 0, 5, 0)
+                })
+                
+                // Get last 3 messages
+                val messages = viewModel.getMessages().takeLast(3)
+                if (messages.isEmpty()) {
+                    add(JLabel("No recent history", SwingConstants.LEFT).apply {
+                        foreground = Color(150, 150, 150)
+                        font = font.deriveFont(font.size2D - 1f)
+                    })
+                } else {
+                    messages.forEach { message ->
+                        val messagePanel = JPanel(BorderLayout()).apply {
+                            background = Color(51, 51, 51)
+                            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                        }
+                        
+                        val content = JTextArea(message.content).apply {
+                            background = Color(51, 51, 51)
+                            foreground = Color(220, 220, 220)
+                            lineWrap = true
+                            wrapStyleWord = true
+                            isEditable = false
+                            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                        }
+                        
+                        messagePanel.add(content, BorderLayout.CENTER)
+                        add(messagePanel)
+                        add(Box.createVerticalStrut(5))
+                    }
+                }
+            }
+            
+            add(welcomePanel)
+            add(historyPanel)
+        }
+    }
+
     private fun setupListeners() {
         viewModel.addMessageListener { messages ->
             SwingUtilities.invokeLater {
@@ -198,6 +261,21 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
     }
 
     private fun sendMessage(content: String) {
+        if (viewModel.isProcessing()) {
+            return
+        }
+        
+        // Check if API key is configured
+        if (viewModel.getApiKey().isNullOrBlank()) {
+            JOptionPane.showMessageDialog(
+                contentPanel,
+                "Please configure your API key in Settings | Tools | Cline",
+                "API Key Required",
+                JOptionPane.WARNING_MESSAGE
+            )
+            return
+        }
+        
         viewModel.sendMessage(content)
         // Create new task and switch to Current Task tab
         viewModel.createNewTask()

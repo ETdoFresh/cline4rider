@@ -15,7 +15,13 @@ class ChatViewModel(private val project: Project) {
     private val logger = Logger.getInstance(ChatViewModel::class.java)
     private val apiProvider = project.getService(ApiProvider::class.java)
     private val settings = ClineSettings.getInstance(project)
-    private val messages = CopyOnWriteArrayList<ClineMessage>()
+    private val messages = CopyOnWriteArrayList<ClineMessage>().apply {
+        add(ClineMessage(
+            ClineMessage.Role.SYSTEM,
+            "Welcome to Cline for Rider! How can I assist you today?",
+            System.currentTimeMillis()
+        ))
+    }
     private val messageListeners = mutableListOf<(List<ClineMessage>) -> Unit>()
     private val stateListeners = mutableListOf<(Boolean) -> Unit>()
     private var isProcessing = false
@@ -76,6 +82,11 @@ class ChatViewModel(private val project: Project) {
 
     fun clearMessages() {
         messages.clear()
+        messages.add(ClineMessage(
+            ClineMessage.Role.SYSTEM,
+            "New chat started. How can I assist you?",
+            System.currentTimeMillis()
+        ))
         notifyMessageListeners()
     }
 
@@ -90,6 +101,10 @@ class ChatViewModel(private val project: Project) {
     }
 
     fun isProcessing(): Boolean = isProcessing
+
+    fun getApiKey(): String? {
+        return settings.getApiKey()
+    }
 
     fun createNewTask() {
         // Clear existing messages to start a new task
