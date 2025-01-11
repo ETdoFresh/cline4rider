@@ -19,7 +19,7 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
     private var currentConversationId: String? = null
 
     companion object {
-        private const val PAGE_SIZE = 10
+        private const val PAGE_SIZE = 3
         fun getInstance(project: Project): ChatHistory = project.service()
     }
 

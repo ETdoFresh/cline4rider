@@ -31,11 +31,8 @@ class ChatViewModel(private val project: Project) {
 
     private fun startNewConversation() {
         currentConversationId = chatHistory.startNewConversation()
-        if (!isFirstUserMessage) {
-            // Only save welcome message to history if this isn't the first conversation
-            chatHistory.addMessage(currentConversationId!!, welcomeMessage)
-        }
         notifyMessageListeners()
+        notifyHistoryListeners()
     }
 
     init {
@@ -60,12 +57,7 @@ class ChatViewModel(private val project: Project) {
     fun sendMessage(content: String) {
         if (content.isBlank() || isProcessing) return
 
-        if (isFirstUserMessage) {
-            // For the first user message, we need to save both welcome message and user message
-            isFirstUserMessage = false
-            chatHistory.addMessage(currentConversationId!!, welcomeMessage)
-        }
-
+        isFirstUserMessage = false
         val userMessage = ClineMessage(Role.USER, content, System.currentTimeMillis())
         chatHistory.addMessage(currentConversationId!!, userMessage)
         notifyMessageListeners()
@@ -86,6 +78,7 @@ class ChatViewModel(private val project: Project) {
                     onSuccess = { response ->
                         chatHistory.addMessage(currentConversationId!!, response)
                         notifyMessageListeners()
+                        notifyHistoryListeners()
                     },
                     onFailure = { error ->
                         handleError("Failed to get response: ${error.message}")
@@ -120,12 +113,10 @@ class ChatViewModel(private val project: Project) {
             chatHistory.getConversationMessages(it)
         } ?: emptyList()
 
-        // If this is the first conversation and no messages have been saved yet,
-        // return just the welcome message for display purposes
-        return if (isFirstUserMessage && messages.isEmpty()) {
-            listOf(welcomeMessage)
-        } else {
-            messages
+        return when {
+            messages.isEmpty() && isFirstUserMessage -> listOf(welcomeMessage)
+            messages.isEmpty() -> emptyList()
+            else -> messages
         }
     }
 

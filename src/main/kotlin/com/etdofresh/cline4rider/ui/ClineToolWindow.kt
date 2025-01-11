@@ -73,9 +73,12 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         // Setup main chat panel
         val mainChatPanel = createMainChatPanel()
         
+        // Create and store home panel reference
+        homePanel = createHomePanel()
+        
         // Setup tabs with icons
         tabbedPane.apply {
-            addTab("Home", AllIcons.Nodes.HomeFolder, createHomePanel())
+            addTab("Home", AllIcons.Nodes.HomeFolder, homePanel)
             addTab("Chat", AllIcons.Nodes.Folder, mainChatPanel)
             addTab("History", AllIcons.Vcs.History, createHistoryPanel())
             addTab("Settings", AllIcons.General.Settings, JPanel())
@@ -529,12 +532,137 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         }
     }
 
+    private lateinit var homePanel: JPanel
+    
+    private fun refreshHomePanel() {
+        homePanel.removeAll()
+        
+        // Add welcome message
+        val welcomePanel = JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
+            add(JLabel("Welcome to Cline for Rider!", SwingConstants.CENTER).apply {
+                foreground = Color(220, 220, 220)
+                font = font.deriveFont(font.size2D + 2f)
+            })
+        }
+        
+        // Add recent history section
+        val historyPanel = JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
+            layout = BoxLayout(this, BoxLayout.Y_AXIS)
+            
+            // Add section header
+            add(JLabel("Recent History", SwingConstants.LEFT).apply {
+                foreground = Color(200, 200, 200)
+                font = font.deriveFont(font.size2D + 1f)
+                border = BorderFactory.createEmptyBorder(0, 0, 5, 0)
+            })
+            
+            // Get last 3 conversations
+            val conversations = viewModel.getRecentConversations().take(3)
+            if (conversations.isEmpty()) {
+                add(JLabel("No recent history", SwingConstants.LEFT).apply {
+                    foreground = Color(150, 150, 150)
+                    font = font.deriveFont(font.size2D - 1f)
+                })
+            } else {
+                conversations.forEach { conversation ->
+                    val firstUserMessage = conversation.messages.firstOrNull { it.role == "USER" }
+                    if (firstUserMessage != null) {
+                        val messagePanel = JPanel(BorderLayout()).apply {
+                            background = Color(51, 51, 51)
+                            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                            cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                            addMouseListener(object : MouseAdapter() {
+                                override fun mouseClicked(e: MouseEvent) {
+                                    viewModel.loadConversation(conversation.id)
+                                    tabbedPane.selectedIndex = 1 // Switch to chat tab
+                                }
+                                override fun mouseEntered(e: MouseEvent) {
+                                    background = Color(60, 60, 60)
+                                }
+                                override fun mouseExited(e: MouseEvent) {
+                                    background = Color(51, 51, 51)
+                                }
+                            })
+                        }
+                        
+                        val content = JTextArea(firstUserMessage.content).apply {
+                            background = Color(51, 51, 51)
+                            foreground = Color(220, 220, 220)
+                            lineWrap = true
+                            wrapStyleWord = true
+                            isEditable = false
+                            border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                        }
+                        
+                        messagePanel.add(content, BorderLayout.CENTER)
+                        add(messagePanel)
+                        add(Box.createVerticalStrut(5))
+                    }
+                }
+            }
+        }
+        
+        homePanel.add(welcomePanel)
+        homePanel.add(historyPanel)
+        
+        // Add input panel for new task
+        val homeInputPanel = createInputPanel().apply {
+            border = BorderFactory.createEmptyBorder(10, 10, 10, 10)
+        }
+        
+        val homeInputArea = homeInputPanel.components.find { it is JBScrollPane }?.let { it as JBScrollPane }?.viewport?.view as? JTextArea
+        val homeSendButton = homeInputPanel.components.find { it is JPanel }?.let { it as JPanel }?.components?.find { it is JButton && it.text == "Send" } as? JButton
+        
+        homeInputArea?.inputMap?.put(KeyStroke.getKeyStroke("ENTER"), "send")
+        homeInputArea?.inputMap?.put(KeyStroke.getKeyStroke("shift ENTER"), "newline")
+        homeInputArea?.actionMap?.put("send", object : AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent) {
+                val message = homeInputArea?.text?.trim()
+                if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
+                    viewModel.createNewTask()
+                    sendMessage(message)
+                    homeInputArea.text = ""
+                }
+            }
+        })
+        homeInputArea?.actionMap?.put("newline", object : AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent) {
+                homeInputArea?.insert("\n", homeInputArea.caretPosition)
+            }
+        })
+        
+        homeSendButton?.addActionListener {
+            val message = homeInputArea?.text?.trim()
+            if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
+                viewModel.createNewTask()
+                sendMessage(message)
+                homeInputArea.text = ""
+            }
+        }
+        
+        homePanel.add(homeInputPanel)
+        
+        homePanel.revalidate()
+        homePanel.repaint()
+    }
+    
     private fun setupListeners() {
         viewModel.addMessageListener { messages ->
             println("Message listener triggered with ${messages.size} messages")
             SwingUtilities.invokeLater {
                 println("Refreshing UI with messages: $messages")
                 refreshMessages()
+            }
+        }
+        
+        viewModel.addHistoryListener { conversations ->
+            SwingUtilities.invokeLater {
+                refreshHomePanel()
+                refreshHistory()
             }
         }
 
