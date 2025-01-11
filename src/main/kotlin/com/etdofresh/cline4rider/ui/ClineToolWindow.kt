@@ -130,6 +130,34 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
             minimumSize = Dimension(0, JBUI.scale(40))
         }
         
+        val inputArea = inputScrollPane.viewport.view as? JTextArea
+        val sendButton = buttonPanel.components.find { it is JButton && it.text == "Send" } as? JButton
+        
+        inputArea?.inputMap?.put(KeyStroke.getKeyStroke("ENTER"), "send")
+        inputArea?.inputMap?.put(KeyStroke.getKeyStroke("shift ENTER"), "newline")
+        inputArea?.actionMap?.put("send", object : AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent) {
+                val message = inputArea?.text?.trim()
+                if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
+                    sendMessage(message)
+                    inputArea.text = ""
+                }
+            }
+        })
+        inputArea?.actionMap?.put("newline", object : AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent) {
+                inputArea?.insert("\n", inputArea.caretPosition)
+            }
+        })
+        
+        sendButton?.addActionListener {
+            val message = inputArea?.text?.trim()
+            if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
+                sendMessage(message)
+                inputArea.text = ""
+            }
+        }
+        
         inputPanel.add(inputScrollPane, BorderLayout.CENTER)
 
         val buttonPanel = JPanel().apply {
