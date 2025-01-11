@@ -133,12 +133,12 @@ class ChatViewModel(private val project: Project) {
             timestamp = System.currentTimeMillis()
         ))
 
-        // Create an assistant message placeholder (timestamp will be set when response starts)
-        val assistantMessage = ClineMessage(
-            role = ClineMessage.Role.ASSISTANT,
-            content = "",
-            timestamp = 0L  // Will be updated when response starts
-        )
+                // Create an assistant message placeholder with current timestamp
+                val assistantMessage = ClineMessage(
+                    role = ClineMessage.Role.ASSISTANT,
+                    content = "",
+                    timestamp = System.currentTimeMillis()
+                )
         addMessage(assistantMessage)
 
         // Set processing state
@@ -195,7 +195,7 @@ class ChatViewModel(private val project: Project) {
                                     content = currentContent.toString(),
                                     cost = totalCost,
                                     cacheDiscount = cacheDiscount,
-                                    timestamp = System.currentTimeMillis()
+                                    timestamp = System.currentTimeMillis()  // Update timestamp on final chunk
                                 )
                                 messages[messages.size - 1] = updatedAssistantMessage
                                 

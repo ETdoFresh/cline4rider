@@ -794,16 +794,27 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 refreshMessages()
                 conversationStats.updateStats(messages)
                 
-                // Update response time in header
-                val latestUserMessage = messages.lastOrNull { it.role == ClineMessage.Role.USER }
-                val latestAssistantMessage = messages.lastOrNull { 
-                    it.role == ClineMessage.Role.ASSISTANT && 
-                    (latestUserMessage == null || it.timestamp > latestUserMessage.timestamp)
+                // Calculate total response time from all message pairs
+                var totalResponseTime = 0.0
+                var currentUserMessage: ClineMessage? = null
+                
+                messages.forEach { message ->
+                    when (message.role) {
+                        ClineMessage.Role.USER -> {
+                            currentUserMessage = message
+                        }
+                        ClineMessage.Role.ASSISTANT -> {
+                            currentUserMessage?.let { userMessage ->
+                                if (message.timestamp > userMessage.timestamp) {
+                                    totalResponseTime += (message.timestamp - userMessage.timestamp) / 1000.0
+                                }
+                            }
+                        }
+                        else -> {} // Ignore other message types
+                    }
                 }
-                val responseTime = if (latestUserMessage != null && latestAssistantMessage != null) {
-                    (latestAssistantMessage.timestamp - latestUserMessage.timestamp) / 1000.0
-                } else 0.0
-                responseTimeLabel.text = "Response Time: ${String.format("%.2f", responseTime)}s"
+                
+                responseTimeLabel.text = "Total Response Time: ${String.format("%.2f", totalResponseTime)}s"
             }
         }
         
