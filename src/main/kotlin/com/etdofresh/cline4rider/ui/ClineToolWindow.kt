@@ -112,6 +112,34 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
 
         val inputPanel = createInputPanel()
         
+        val inputArea = inputPanel.components.find { it is JBScrollPane }?.let { it as JBScrollPane }?.viewport?.view as? JTextArea
+        val sendButton = inputPanel.components.find { it is JPanel }?.let { it as JPanel }?.components?.find { it is JButton && it.text == "Send" } as? JButton
+        
+        inputArea?.inputMap?.put(KeyStroke.getKeyStroke("ENTER"), "send")
+        inputArea?.inputMap?.put(KeyStroke.getKeyStroke("shift ENTER"), "newline")
+        inputArea?.actionMap?.put("send", object : AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent) {
+                val message = inputArea?.text?.trim()
+                if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
+                    sendMessage(message)
+                    inputArea.text = ""
+                }
+            }
+        })
+        inputArea?.actionMap?.put("newline", object : AbstractAction() {
+            override fun actionPerformed(e: java.awt.event.ActionEvent) {
+                inputArea?.insert("\n", inputArea.caretPosition)
+            }
+        })
+        
+        sendButton?.addActionListener {
+            val message = inputArea?.text?.trim()
+            if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
+                sendMessage(message)
+                inputArea.text = ""
+            }
+        }
+        
         panel.add(scrollPane, BorderLayout.CENTER)
         panel.add(inputPanel, BorderLayout.SOUTH)
         
