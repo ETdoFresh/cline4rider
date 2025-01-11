@@ -199,6 +199,7 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         
         loadMoreButton.addActionListener {
             refreshHistory()
+            loadMoreButton.isVisible = viewModel.hasMoreConversations(historyOffset)
         }
         
         scrollPane.viewport.view = historyContent
@@ -207,6 +208,7 @@ class ClineToolWindow(project: Project, private val toolWindow: ToolWindow) {
         
         // Initial load after components are initialized
         refreshHistory()
+        loadMoreButton.isVisible = viewModel.hasMoreConversations(historyOffset)
         
         return panel
     }
