@@ -182,41 +182,30 @@ class ChatViewModel(private val project: Project) {
                 var cacheDiscount = 0.0
                 apiClient.sendMessages(messagesToSend) { chunk, stats ->
                     if (!errorOccurred) {
-                        // If this is the first chunk, update the timestamp
-                        if (currentContent.isEmpty()) {
-                            ApplicationManager.getApplication().invokeLater {
-                                // Update the timestamp when we receive the first chunk
-                                val updatedAssistantMessage = messages.last().copy(
-                                    timestamp = System.currentTimeMillis()
-                                )
-                                messages[messages.size - 1] = updatedAssistantMessage
-                                notifyMessageListeners()
-                            }
-                        }
-                        
                         currentContent.append(chunk)
                         stats?.let { 
                             totalCost = it.total_cost ?: 0.0
                             cacheDiscount = it.cache_discount ?: 0.0
                         }
+                        
+                        // Update message with new content and timestamp on every chunk
                         ApplicationManager.getApplication().invokeLater {
                             try {
-                                // Update the last message (assistant's message) with accumulated content, cost, and cache discount
                                 val updatedAssistantMessage = messages.last().copy(
                                     content = currentContent.toString(),
                                     cost = totalCost,
                                     cacheDiscount = cacheDiscount,
-                                    timestamp = if (messages.last().timestamp == 0L) System.currentTimeMillis() else messages.last().timestamp
+                                    timestamp = System.currentTimeMillis()
                                 )
                                 messages[messages.size - 1] = updatedAssistantMessage
                                 
-                                // First update the chat history in a write action
+                                // Update the chat history in a write action
                                 ApplicationManager.getApplication().runWriteAction {
                                     chatHistory.addMessage(currentConversationId!!, updatedAssistantMessage)
                                     chatHistory.saveState()
                                 }
                                 
-                                // Then notify listeners outside the write action
+                                // Notify listeners outside the write action
                                 notifyMessageListeners()
                                 notifyHistoryListeners()
                             } catch (e: Exception) {
