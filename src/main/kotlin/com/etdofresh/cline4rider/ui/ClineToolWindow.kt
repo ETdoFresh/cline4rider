@@ -36,6 +36,8 @@ import com.etdofresh.cline4rider.tasks.TaskProcessor
 import java.io.File
 
 class ClineToolWindow(private val project: Project, private val toolWindow: ToolWindow) {
+    private val logger = com.intellij.openapi.diagnostic.Logger.getInstance(ClineToolWindow::class.java)
+    
     companion object {
         private val DEFAULT_SYSTEM_PROMPT = """You are Cline, an AI coding assistant. Your role is to help developers write, modify, and understand code. You should:
             |1. Provide clear, concise explanations
@@ -974,7 +976,18 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         val lastAssistantMessage = messages.lastOrNull { it.role == ClineMessage.Role.ASSISTANT }
         
         if (lastAssistantMessage != null) {
-            // Extract tool calls from the assistant's message
+            val rawText = lastAssistantMessage.content.filterIsInstance<ClineMessage.Content.Text>().joinToString("\n") { it.text }
+            
+            // Try to parse tool directly from the message content
+            val tool = taskProcessor.parseToolFromResponse(rawText)
+            if (tool != null) {
+                val result = taskProcessor.processAssistantResponse(rawText)
+                if (result != null) {
+                    sendMessage(listOf(ClineMessage.Content.Text(text = result)))
+                }
+            }
+            
+            // Also try existing tool calls
             val toolCalls = lastAssistantMessage.toolCalls
             if (toolCalls.isNotEmpty()) {
                 // Process each tool call

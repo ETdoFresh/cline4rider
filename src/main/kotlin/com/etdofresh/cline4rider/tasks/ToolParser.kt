@@ -41,7 +41,7 @@ class ToolParser {
         }
     }
 
-    private fun extractToolXml(response: String): String? {
+    fun extractToolXml(response: String): String? {
         // Find the first occurrence of a tool tag
         val toolTags = listOf(
             "execute_command",
@@ -56,13 +56,16 @@ class ToolParser {
         )
 
         for (tag in toolTags) {
-            val startTag = "<$tag>"
-            val endTag = "</$tag>"
-            val startIndex = response.indexOf(startTag)
-            val endIndex = response.indexOf(endTag)
+            // Match tag with any amount of whitespace before it
+            val startTagRegex = "\\s*<$tag>"
+            val endTagRegex = "\\s*</$tag>"
+            val startMatch = startTagRegex.toRegex().find(response)
+            val endMatch = endTagRegex.toRegex().find(response)
 
-            if (startIndex != -1 && endIndex != -1) {
-                return response.substring(startIndex, endIndex + endTag.length)
+            if (startMatch != null && endMatch != null) {
+                val startIndex = startMatch.range.first
+                val endIndex = endMatch.range.last + 1
+                return response.substring(startIndex, endIndex)
             }
         }
 
@@ -70,10 +73,20 @@ class ToolParser {
     }
 
     private fun parseXml(xml: String): Document {
-        val factory = DocumentBuilderFactory.newInstance()
+        val factory = DocumentBuilderFactory.newInstance().apply {
+            isNamespaceAware = false
+            isValidating = false
+            setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false)
+            setFeature("http://apache.org/xml/features/nonvalidating/load-dtd-grammar", false)
+        }
         val builder = factory.newDocumentBuilder()
         val input = InputSource(StringReader(xml))
-        return builder.parse(input)
+        try {
+            return builder.parse(input)
+        } catch (e: Exception) {
+            logger.error("Failed to parse XML: $xml", e)
+            throw e
+        }
     }
 }
 

@@ -13,8 +13,23 @@ import com.intellij.openapi.application.ApplicationManager
 
 @Service(Service.Level.PROJECT)
 class ChatViewModel(private val project: Project) {
+    private val logger = com.intellij.openapi.diagnostic.Logger.getInstance(ChatViewModel::class.java)
     private var systemPrompt: String? = null
     private val taskProcessor = TaskProcessor(project)
+
+    private fun extractTaskContent(response: String): String? {
+        val taskStartTag = "<task>"
+        val taskEndTag = "</task>"
+        
+        val startIndex = response.indexOf(taskStartTag)
+        val endIndex = response.indexOf(taskEndTag)
+        
+        if (startIndex != -1 && endIndex != -1) {
+            return response.substring(startIndex + taskStartTag.length, endIndex).trim()
+        }
+        return null
+    }
+
     private var messages = mutableListOf<ClineMessage>()
     private var isProcessing = false
     private val messageListeners = mutableListOf<(List<ClineMessage>) -> Unit>()
@@ -147,12 +162,12 @@ class ChatViewModel(private val project: Project) {
             timestamp = System.currentTimeMillis()
         ))
 
-                // Create an assistant message placeholder with current timestamp
-                val assistantMessage = ClineMessage(
-                    role = ClineMessage.Role.ASSISTANT,
+        // Create an assistant message placeholder with current timestamp
+        val assistantMessage = ClineMessage(
+            role = ClineMessage.Role.ASSISTANT,
             content = emptyList(),
-                    timestamp = System.currentTimeMillis()
-                )
+            timestamp = System.currentTimeMillis()
+        )
         addMessage(assistantMessage)
 
         // Set processing state
@@ -164,7 +179,7 @@ class ChatViewModel(private val project: Project) {
         if (combinedPrompt.isNotEmpty()) {
             messagesToSend.add(ClineMessage(
                 role = ClineMessage.Role.SYSTEM,
-            content = listOf(ClineMessage.Content.Text(text = combinedPrompt)),
+                content = listOf(ClineMessage.Content.Text(text = combinedPrompt)),
                 timestamp = System.currentTimeMillis()
             ))
         }
@@ -208,14 +223,23 @@ class ChatViewModel(private val project: Project) {
                                 val currentText = currentContent.toString()
                                 val toolCalls = if (stats != null) {
                                     // Only parse tools when we receive stats (streaming complete)
-                                    val tool = taskProcessor.parseToolFromResponse(currentText)
-                                    if (tool != null) {
-                                        listOf(ClineMessage.ToolCall(
-                                            id = System.currentTimeMillis().toString(),
-                                            name = tool.name,
-                                            arguments = currentText,
-                                            output = null // Output will be set after execution when approved
-                                        ))
+                                    // Process the current text
+                                    val taskContent = extractTaskContent(currentText)
+                                    val contentToProcess = taskContent ?: currentText
+                                    // First extract the tool XML
+                                    val toolXml = taskProcessor.extractToolXml(contentToProcess)
+                                    if (toolXml != null) {
+                                        val tool = taskProcessor.parseToolFromResponse(toolXml)
+                                        if (tool != null) {
+                                            listOf(ClineMessage.ToolCall(
+                                                id = System.currentTimeMillis().toString(),
+                                                name = tool.name,
+                                                arguments = toolXml,
+                                                output = null // Output will be set after execution when approved
+                                            ))
+                                        } else {
+                                            emptyList()
+                                        }
                                     } else {
                                         emptyList()
                                     }
@@ -278,7 +302,6 @@ class ChatViewModel(private val project: Project) {
             )
         }
     }
-
 
     companion object {
         fun getInstance(project: Project): ChatViewModel = project.service()

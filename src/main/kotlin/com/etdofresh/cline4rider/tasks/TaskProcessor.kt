@@ -54,6 +54,10 @@ class TaskProcessor(private val project: Project) {
         }
     }
 
+    fun extractToolXml(response: String): String? {
+        return toolParser.extractToolXml(response)
+    }
+
     private fun extractTaskContent(response: String): String? {
         val taskStartTag = "<task>"
         val taskEndTag = "</task>"

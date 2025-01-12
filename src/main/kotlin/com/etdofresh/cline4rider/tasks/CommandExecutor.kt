@@ -20,26 +20,32 @@ class CommandExecutor(private val project: Project) {
             "search_files" -> handleSearchFiles(tool.parameters)
             "list_code_definition_names" -> handleListCodeDefinitions(tool.parameters)
             "execute_command" -> handleExecuteCommand(tool.parameters)
-            else -> {
-                logger.warn("Unsupported tool: ${tool.name}")
-                CommandResult(false, "Unsupported tool: ${tool.name}")
-            }
+            else -> CommandResult(false, "Unsupported tool: ${tool.name}")
         }
     }
 
     private fun handleWriteToFile(params: Map<String, String>): CommandResult {
         val path = params["path"] ?: return CommandResult(false, "File path not provided")
         val content = params["content"] ?: return CommandResult(false, "Content not provided")
+        val fullPath = "${project.basePath}/$path"
 
         return try {
-            WriteCommandAction.runWriteCommandAction(project) {
-                val file = createOrGetFile(path)
-                val document = FileDocumentManager.getInstance().getDocument(file)
-                    ?: throw IllegalStateException("Could not get document for file: $path")
-                document.setText(content)
-                FileDocumentManager.getInstance().saveDocument(document)
+            var result: CommandResult? = null
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeAndWait {
+                try {
+                    WriteCommandAction.runWriteCommandAction(project) {
+                        val file = createOrGetFile(fullPath)
+                        val document = FileDocumentManager.getInstance().getDocument(file)
+                            ?: throw IllegalStateException("Could not get document for file: $path")
+                        document.setText(content)
+                        FileDocumentManager.getInstance().saveDocument(document)
+                    }
+                    result = CommandResult(true, "File successfully written: $path")
+                } catch (e: Exception) {
+                    result = CommandResult(false, e.message)
+                }
             }
-            CommandResult(true, "File successfully written: $path")
+            result ?: CommandResult(false, "Failed to write file")
         } catch (e: Exception) {
             logger.error("Failed to write to file: $path", e)
             CommandResult(false, e.message)
@@ -53,13 +59,22 @@ class CommandExecutor(private val project: Project) {
 
     private fun handleReadFile(params: Map<String, String>): CommandResult {
         val path = params["path"] ?: return CommandResult(false, "File path not provided")
+        val fullPath = "${project.basePath}/$path"
         
         return try {
-            val file = LocalFileSystem.getInstance().findFileByPath(path)
-                ?: throw IllegalStateException("File not found: $path")
-            val document = FileDocumentManager.getInstance().getDocument(file)
-                ?: throw IllegalStateException("Could not get document for file: $path")
-            CommandResult(true, document.text)
+            var result: CommandResult? = null
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeAndWait {
+                try {
+                    val file = LocalFileSystem.getInstance().findFileByPath(fullPath)
+                        ?: throw IllegalStateException("File not found: $path")
+                    val document = FileDocumentManager.getInstance().getDocument(file)
+                        ?: throw IllegalStateException("Could not get document for file: $path")
+                    result = CommandResult(true, document.text)
+                } catch (e: Exception) {
+                    result = CommandResult(false, e.message)
+                }
+            }
+            result ?: CommandResult(false, "Failed to read file")
         } catch (e: Exception) {
             logger.error("Failed to read file: $path", e)
             CommandResult(false, e.message)
@@ -69,18 +84,27 @@ class CommandExecutor(private val project: Project) {
     private fun handleReplaceInFile(params: Map<String, String>): CommandResult {
         val path = params["path"] ?: return CommandResult(false, "File path not provided")
         val diff = params["diff"] ?: return CommandResult(false, "Diff not provided")
+        val fullPath = "${project.basePath}/$path"
 
         return try {
-            WriteCommandAction.runWriteCommandAction(project) {
-                val file = LocalFileSystem.getInstance().findFileByPath(path)
-                    ?: throw IllegalStateException("File not found: $path")
-                val document = FileDocumentManager.getInstance().getDocument(file)
-                    ?: throw IllegalStateException("Could not get document for file: $path")
-                
-                document.setText(processDiff(document.text, diff))
-                FileDocumentManager.getInstance().saveDocument(document)
+            var result: CommandResult? = null
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeAndWait {
+                try {
+                    WriteCommandAction.runWriteCommandAction(project) {
+                        val file = LocalFileSystem.getInstance().findFileByPath(fullPath)
+                            ?: throw IllegalStateException("File not found: $path")
+                        val document = FileDocumentManager.getInstance().getDocument(file)
+                            ?: throw IllegalStateException("Could not get document for file: $path")
+                        
+                        document.setText(processDiff(document.text, diff))
+                        FileDocumentManager.getInstance().saveDocument(document)
+                    }
+                    result = CommandResult(true, "File successfully updated: $path")
+                } catch (e: Exception) {
+                    result = CommandResult(false, e.message)
+                }
             }
-            CommandResult(true, "File successfully updated: $path")
+            result ?: CommandResult(false, "Failed to update file")
         } catch (e: Exception) {
             logger.error("Failed to replace in file: $path", e)
             CommandResult(false, e.message)
@@ -90,18 +114,27 @@ class CommandExecutor(private val project: Project) {
     private fun handleListFiles(params: Map<String, String>): CommandResult {
         val path = params["path"] ?: return CommandResult(false, "Path not provided")
         val recursive = params["recursive"]?.toBoolean() ?: false
+        val fullPath = "${project.basePath}/$path"
 
         return try {
-            val file = LocalFileSystem.getInstance().findFileByPath(path)
-                ?: throw IllegalStateException("Directory not found: $path")
-            
-            val files = if (recursive) {
-                collectFilesRecursively(file)
-            } else {
-                file.children.map { it.path }.toList()
+            var result: CommandResult? = null
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeAndWait {
+                try {
+                    val file = LocalFileSystem.getInstance().findFileByPath(fullPath)
+                        ?: throw IllegalStateException("Directory not found: $path")
+                    
+                    val files = if (recursive) {
+                        collectFilesRecursively(file)
+                    } else {
+                        file.children.map { it.path }.toList()
+                    }
+                    
+                    result = CommandResult(true, files.joinToString("\n"))
+                } catch (e: Exception) {
+                    result = CommandResult(false, e.message)
+                }
             }
-            
-            CommandResult(true, files.joinToString("\n"))
+            result ?: CommandResult(false, "Failed to list files")
         } catch (e: Exception) {
             logger.error("Failed to list files: $path", e)
             CommandResult(false, e.message)
@@ -112,13 +145,22 @@ class CommandExecutor(private val project: Project) {
         val path = params["path"] ?: return CommandResult(false, "Path not provided")
         val regex = params["regex"] ?: return CommandResult(false, "Regex not provided")
         val filePattern = params["file_pattern"]
+        val fullPath = "${project.basePath}/$path"
 
         return try {
-            val file = LocalFileSystem.getInstance().findFileByPath(path)
-                ?: throw IllegalStateException("Directory not found: $path")
-            
-            // TODO: Implement file search logic
-            CommandResult(true, "Search completed")
+            var result: CommandResult? = null
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeAndWait {
+                try {
+                    val file = LocalFileSystem.getInstance().findFileByPath(fullPath)
+                        ?: throw IllegalStateException("Directory not found: $path")
+                    
+                    // TODO: Implement file search logic
+                    result = CommandResult(true, "Search completed")
+                } catch (e: Exception) {
+                    result = CommandResult(false, e.message)
+                }
+            }
+            result ?: CommandResult(false, "Failed to search files")
         } catch (e: Exception) {
             logger.error("Failed to search files: $path", e)
             CommandResult(false, e.message)
@@ -127,13 +169,22 @@ class CommandExecutor(private val project: Project) {
 
     private fun handleListCodeDefinitions(params: Map<String, String>): CommandResult {
         val path = params["path"] ?: return CommandResult(false, "Path not provided")
+        val fullPath = "${project.basePath}/$path"
 
         return try {
-            val file = LocalFileSystem.getInstance().findFileByPath(path)
-                ?: throw IllegalStateException("Directory not found: $path")
-            
-            // TODO: Implement code definition listing logic
-            CommandResult(true, "Code definitions listed")
+            var result: CommandResult? = null
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeAndWait {
+                try {
+                    val file = LocalFileSystem.getInstance().findFileByPath(fullPath)
+                        ?: throw IllegalStateException("Directory not found: $path")
+                    
+                    // TODO: Implement code definition listing logic
+                    result = CommandResult(true, "Code definitions listed")
+                } catch (e: Exception) {
+                    result = CommandResult(false, e.message)
+                }
+            }
+            result ?: CommandResult(false, "Failed to list code definitions")
         } catch (e: Exception) {
             logger.error("Failed to list code definitions: $path", e)
             CommandResult(false, e.message)
