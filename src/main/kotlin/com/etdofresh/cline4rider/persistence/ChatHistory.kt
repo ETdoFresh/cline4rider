@@ -149,13 +149,13 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         @get:Attribute
         var role: String = ""
         
-        @get:XCollection(style = XCollection.Style.v2)
+        @get:XCollection(style = XCollection.Style.v2, elementTypes = [SerializableContent.Text::class, SerializableContent.ImageUrl::class])
         var content: MutableList<SerializableContent> = mutableListOf()
         
         @get:Attribute
         var timestamp: Long = 0
         
-        @get:XCollection(style = XCollection.Style.v2)
+        @get:XCollection(style = XCollection.Style.v2, elementTypes = [SerializableToolCall::class])
         var toolCalls: MutableList<SerializableToolCall> = mutableListOf()
 
         @get:Attribute
@@ -251,27 +251,29 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
     }
 
     @Tag("content")
-    sealed class SerializableContent {
+    sealed class SerializableContent(@get:Attribute("type") open var type: String) {
+        companion object {
+            const val TYPE_TEXT = "text"
+            const val TYPE_IMAGE_URL = "image_url"
+        }
         @Tag("text")
         class Text(
             @get:Attribute
             var text: String = "",
             
-            @get:Attribute
-            var type: String = "text",
+            override var type: String = TYPE_TEXT,
             
             @get:Attribute
             var cacheControl: CacheControl? = null
-        ) : SerializableContent()
+        ) : SerializableContent(type)
 
         @Tag("imageUrl")
         class ImageUrl(
             @get:Attribute
             var imageUrl: ImageUrlData = ImageUrlData(),
             
-            @get:Attribute
-            var type: String = "image_url"
-        ) : SerializableContent()
+            override var type: String = TYPE_IMAGE_URL
+        ) : SerializableContent(type)
 
         @Tag("imageUrlData")
         class ImageUrlData(
