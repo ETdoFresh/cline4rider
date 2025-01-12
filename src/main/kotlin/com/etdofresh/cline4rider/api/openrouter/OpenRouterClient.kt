@@ -190,6 +190,22 @@ class OpenRouterClient(private val settings: ClineSettings) {
                                                         val stats = fetchGenerationStats(id, apiKey)
                                                         // Always invoke callback with final stats, even if null
                                                         com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+                                                            onChunk("", stats)
+                                                        }
+                                                    }.start()
+                                                }
+                                                continue
+                                            }
+                                            
+                                            try {
+                                                val chunk = json.decodeFromString<ChatCompletionChunk>(data)
+                                                lastChunkId = chunk.id
+                                                logger.debug("Got chunk ID: ${chunk.id}")
+                                                val content = chunk.choices.firstOrNull()?.delta?.content
+                                                if (content != null) {
+                                                    fullResponse.append(content)
+                                                    com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+                                                        onChunk(content, null)
                                                     }
                                                 }
                                             } catch (e: Exception) {
