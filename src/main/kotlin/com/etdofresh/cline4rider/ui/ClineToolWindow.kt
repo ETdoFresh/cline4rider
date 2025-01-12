@@ -67,6 +67,8 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         preferredSize = Dimension(JBUI.scale(400), JBUI.scale(150))
         minimumSize = Dimension(JBUI.scale(300), JBUI.scale(100))
     }
+    private lateinit var actionButtonsPanel: JPanel
+    
     private val chatPanel = JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         background = Color(45, 45, 45)
@@ -98,6 +100,30 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     }
 
     init {
+        actionButtonsPanel = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.X_AXIS)
+            background = Color(45, 45, 45)
+            isVisible = false
+            add(Box.createHorizontalGlue())
+            add(JButton("Approve").apply {
+                background = Color(40, 167, 69)
+                foreground = Color.WHITE
+                addActionListener {
+                    handleApprove()
+                    actionButtonsPanel.isVisible = false
+                }
+            })
+            add(Box.createHorizontalStrut(10))
+            add(JButton("Deny").apply {
+                background = Color(220, 53, 69)
+                foreground = Color.WHITE
+                addActionListener {
+                    handleDeny()
+                    actionButtonsPanel.isVisible = false
+                }
+            })
+            add(Box.createHorizontalGlue())
+        }
         setupUI()
         setupListeners()
     }
@@ -158,21 +184,21 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             add(responseTimeLabel, BorderLayout.EAST)
         }
         
-        // Create messages panel with header, stats and chat content
-        val messagesPanel = JPanel(BorderLayout()).apply {
-            background = Color(45, 45, 45)
-            
-            // Create top panel for header and stats
-            val topPanel = JPanel(BorderLayout()).apply {
+            // Create messages panel with header, stats, and chat content
+            val messagesPanel = JPanel(BorderLayout()).apply {
                 background = Color(45, 45, 45)
-                add(headerPanel, BorderLayout.NORTH)
-                add(conversationStats, BorderLayout.SOUTH)
-            }
-            
-            add(topPanel, BorderLayout.NORTH)
-            
-            // Create scroll pane for chat content only
-            val scrollPane = JBScrollPane(chatPanel).apply {
+                
+                // Create top panel for header and stats
+                val topPanel = JPanel(BorderLayout()).apply {
+                    background = Color(45, 45, 45)
+                    add(headerPanel, BorderLayout.NORTH)
+                    add(conversationStats, BorderLayout.CENTER)
+                }
+                
+                add(topPanel, BorderLayout.NORTH)
+                
+                // Create scroll pane for chat content only
+                val scrollPane = JBScrollPane(chatPanel).apply {
                 border = BorderFactory.createEmptyBorder()
                 viewport.background = Color(45, 45, 45)
                 verticalScrollBar.unitIncrement = 16
@@ -188,9 +214,16 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         // Create input panel with fixed height
         val inputPanel = createInputPanel()
         
+        // Create a panel for action buttons and input
+        val bottomPanel = JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            add(actionButtonsPanel, BorderLayout.NORTH)
+            add(inputPanel, BorderLayout.CENTER)
+        }
+        
         // Add components to main panel
         mainPanel.add(chatAreaPanel, BorderLayout.CENTER)
-        mainPanel.add(inputPanel, BorderLayout.SOUTH)
+        mainPanel.add(bottomPanel, BorderLayout.SOUTH)
         
         return mainPanel
     }
@@ -911,7 +944,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                     is ClineMessage.Content.Text -> {
                         val text = it.text.trim()
                         if (!text.startsWith("<task>")) {
-                            ClineMessage.Content.Text(text = "<task>\n$text\n</task>")
+                            ClineMessage.Content.Text(text = "<task>$text</task>")
                         } else {
                             it
                         }
@@ -933,14 +966,47 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         }
     }
 
+    private fun handleApprove() {
+        val messages = viewModel.getMessages()
+        val lastAssistantMessage = messages.lastOrNull { it.role == ClineMessage.Role.ASSISTANT }
+        
+        if (lastAssistantMessage != null) {
+            // Extract tool calls from the assistant's message
+            val toolCalls = lastAssistantMessage.toolCalls
+            if (toolCalls.isNotEmpty()) {
+                // Send the tool call output as a user message
+                val toolOutput = toolCalls.joinToString("\n\n") { it.output ?: "" }
+                if (toolOutput.isNotEmpty()) {
+                    sendMessage(listOf(ClineMessage.Content.Text(text = toolOutput)))
+                }
+            }
+        }
+    }
+
+    private fun handleDeny() {
+        val denyReason = inputArea.text.trim()
+        if (denyReason.isNotEmpty()) {
+            sendMessage(listOf(ClineMessage.Content.Text(text = "DENY: $denyReason")))
+            inputArea.text = ""
+        } else {
+            sendMessage(listOf(ClineMessage.Content.Text(text = "DENY: No reason provided")))
+        }
+    }
+
     private fun refreshMessages() {
         SwingUtilities.invokeLater {
             chatPanel.removeAll()
+            actionButtonsPanel.isVisible = false
 
             // Get all messages and process them
             val messages = viewModel.getMessages()
             messages.forEach { message ->
                 addMessageToUI(message)
+            }
+
+            // Show approve/deny buttons if last message is from assistant
+            if (messages.lastOrNull()?.role == ClineMessage.Role.ASSISTANT) {
+                actionButtonsPanel.isVisible = true
             }
 
             // Batch UI updates
