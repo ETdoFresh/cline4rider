@@ -251,12 +251,15 @@ class CommandExecutor(private val project: Project) {
                     // Create actions toolbar
                     val actions = DefaultActionGroup()
                     
+                    // Get command name without arguments
+                    val commandName = command.split(" ").first()
+                    
                     // Create content descriptor
                     val descriptor = RunContentDescriptor(
                         console,
                         processHandler,
                         console.component,
-                        "Cline Command",
+                        "Cline ($commandName)",
                         null
                     )
                     
