@@ -993,6 +993,9 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
 
         val headerText = buildString {
             append("[${formatter.format(timestamp)}]")
+            if (message.model != null) {
+                append(" [${message.model}]")
+            }
             if (message.cost != null && message.cost > 0.0) {
                 append(" [$${String.format("%.4f", message.cost)}]")
             }

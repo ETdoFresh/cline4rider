@@ -195,7 +195,8 @@ class ChatViewModel(private val project: Project) {
                                     content = listOf(ClineMessage.Content.Text(text = currentContent.toString())),
                                     cost = totalCost,
                                     cacheDiscount = cacheDiscount,
-                                    timestamp = System.currentTimeMillis()  // Update timestamp on final chunk
+                                    timestamp = System.currentTimeMillis(),  // Update timestamp on final chunk
+                                    model = ClineSettings.getInstance(project).state.model
                                 )
                                 messages[messages.size - 1] = updatedAssistantMessage
                                 

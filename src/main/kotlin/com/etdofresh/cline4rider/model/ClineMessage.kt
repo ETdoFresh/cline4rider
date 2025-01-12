@@ -8,7 +8,8 @@ data class ClineMessage(
     val tokens: Int? = null,
     val cachedTokens: Int? = null,
     val cost: Double? = null,
-    val cacheDiscount: Double? = null
+    val cacheDiscount: Double? = null,
+    val model: String? = null
 ) {
     sealed class Content {
         data class Text(
