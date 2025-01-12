@@ -905,7 +905,22 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         }
         
         try {
-            viewModel.sendMessage(content)
+            // Always wrap content in task tags
+            val processedContent = content.map { 
+                when (it) {
+                    is ClineMessage.Content.Text -> {
+                        val text = it.text.trim()
+                        if (!text.startsWith("<task>")) {
+                            ClineMessage.Content.Text(text = "<task>\n$text\n</task>")
+                        } else {
+                            it
+                        }
+                    }
+                    else -> it
+                }
+            }
+            
+            viewModel.sendMessage(processedContent)
             // Switch to chat tab to show the conversation
             tabbedPane.selectedIndex = 1
         } catch (e: Exception) {

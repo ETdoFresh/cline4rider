@@ -25,8 +25,12 @@ class TaskProcessor(private val project: Project) {
 
     fun processAssistantResponse(response: String): String? {
         return try {
+            // Extract task content if present
+            val taskContent = extractTaskContent(response)
+            val contentToProcess = taskContent ?: response
+
             // Extract tool from the response
-            val tool = toolParser.parseToolFromResponse(response) ?: return null
+            val tool = toolParser.parseToolFromResponse(contentToProcess) ?: return null
 
             // Execute the command
             val result = commandExecutor.executeCommand(tool)
@@ -38,6 +42,19 @@ class TaskProcessor(private val project: Project) {
             logger.error("Failed to process assistant response", e)
             null
         }
+    }
+
+    private fun extractTaskContent(response: String): String? {
+        val taskStartTag = "<task>"
+        val taskEndTag = "</task>"
+        
+        val startIndex = response.indexOf(taskStartTag)
+        val endIndex = response.indexOf(taskEndTag)
+        
+        if (startIndex != -1 && endIndex != -1) {
+            return response.substring(startIndex + taskStartTag.length, endIndex).trim()
+        }
+        return null
     }
 
     private fun formatToolResponse(toolName: String, params: Map<String, String>, result: CommandExecutor.CommandResult): String {
