@@ -7,6 +7,7 @@ import com.intellij.openapi.diagnostic.Logger
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.modules.SerializersModule
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -18,7 +19,8 @@ private val json = Json {
     prettyPrint = true
     ignoreUnknownKeys = true
     isLenient = true
-    coerceInputValues = true // Add this to handle malformed values
+    coerceInputValues = true
+    encodeDefaults = true
 }
 
 private inline fun <reified T> T.toJson(): String = json.encodeToString(this)
@@ -85,7 +87,7 @@ class OpenRouterClient(private val settings: ClineSettings) {
     fun sendMessages(messages: List<ClineMessage>, onChunk: ((String, ResponseStats?) -> Unit)? = null): String {
         val apiKey = settings.getApiKey()
         if (apiKey.isNullOrEmpty()) {
-            throw OpenRouterException("OpenRouter API key is not configured")
+            throw OpenRouterException("API key is not configured. Please configure your API key in Settings | Tools | Cline")
         }
         
         if (messages.isEmpty()) {
@@ -146,8 +148,24 @@ class OpenRouterClient(private val settings: ClineSettings) {
 
                     override fun onResponse(call: Call, response: Response) {
                         if (!response.isSuccessful) {
+                            val errorBody = response.body?.string()
+                            logger.error("API request failed: ${response.code} ${response.message}")
+                            logger.error("Error body: $errorBody")
+                            
+                            val errorMessage = when (response.code) {
+                                401 -> "Invalid API key. Please check your API key in Settings | Tools | Cline"
+                                403 -> "Access denied. Please verify your API key has the correct permissions"
+                                429 -> "Rate limit exceeded. Please try again later"
+                                500, 502, 503, 504 -> "Server error (${response.code}). Please try again later"
+                                else -> try {
+                                    val errorJson = errorBody?.let { json.decodeFromString<Map<String, Any>>(it) }
+                                    errorJson?.get("error")?.toString() ?: "API request failed: ${response.code}"
+                                } catch (e: Exception) {
+                                    "API request failed: ${response.code} - $errorBody"
+                                }
+                            }
                             com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
-                                throw OpenRouterException("API request failed: ${response.code}")
+                                throw OpenRouterException(errorMessage)
                             }
                             return
                         }
@@ -172,22 +190,6 @@ class OpenRouterClient(private val settings: ClineSettings) {
                                                         val stats = fetchGenerationStats(id, apiKey)
                                                         // Always invoke callback with final stats, even if null
                                                         com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
-                                                            onChunk("", stats)
-                                                        }
-                                                    }.start()
-                                                }
-                                                continue
-                                            }
-                                            
-                                            try {
-                                                val chunk = json.decodeFromString<ChatCompletionChunk>(data)
-                                                lastChunkId = chunk.id
-                                                logger.debug("Got chunk ID: ${chunk.id}")
-                                                val content = chunk.choices.firstOrNull()?.delta?.content
-                                                if (content != null) {
-                                                    fullResponse.append(content)
-                                                    com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
-                                                        onChunk(content, null)
                                                     }
                                                 }
                                             } catch (e: Exception) {
@@ -209,11 +211,24 @@ class OpenRouterClient(private val settings: ClineSettings) {
                 // Non-streaming mode
                 val response: Response = client.newCall(httpRequest).execute()
                 if (!response.isSuccessful) {
-                    val errorBody = response.body?.string() ?: "No error details"
-                    throw OpenRouterException("""
-                        API request failed: ${response.code} ${response.message}
-                        Error details: $errorBody
-                    """.trimIndent())
+                    val errorBody = response.body?.string()
+                    logger.error("API request failed: ${response.code} ${response.message}")
+                    logger.error("Error body: $errorBody")
+                    
+                    val errorMessage = when (response.code) {
+                        401 -> "Invalid API key. Please check your API key in Settings | Tools | Cline"
+                        403 -> "Access denied. Please verify your API key has the correct permissions"
+                        429 -> "Rate limit exceeded. Please try again later"
+                        500, 502, 503, 504 -> "Server error (${response.code}). Please try again later"
+                        else -> try {
+                            // Try to parse error message from response body
+                            val errorJson = errorBody?.let { json.decodeFromString<Map<String, Any>>(it) }
+                            errorJson?.get("error")?.toString() ?: "API request failed: ${response.code}"
+                        } catch (e: Exception) {
+                            "API request failed: ${response.code} - $errorBody"
+                        }
+                    }
+                    throw OpenRouterException(errorMessage)
                 }
 
                 val responseBody = response.body?.string()

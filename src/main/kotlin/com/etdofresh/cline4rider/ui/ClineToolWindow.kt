@@ -120,8 +120,8 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 val tabbedPane = e.source as JBTabbedPane
                 val newIndex = tabbedPane.selectedIndex
                 if (newIndex == 3) { // Settings tab
-                    SwingUtilities.invokeLater {
-                        tabbedPane.selectedIndex = lastSelectedTab // Return to previous tab
+                    tabbedPane.selectedIndex = lastSelectedTab // Return to previous tab
+                    com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
                         com.intellij.openapi.options.ShowSettingsUtil.getInstance().showSettingsDialog(
                             project,
                             "Cline4Rider"

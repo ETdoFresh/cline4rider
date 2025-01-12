@@ -126,6 +126,18 @@ class ChatViewModel(private val project: Project) {
     }
 
     fun sendMessage(content: List<ClineMessage.Content>) {
+        // Validate settings first
+        val settings = ClineSettings.getInstance(project)
+        if (settings.getApiKey().isNullOrEmpty()) {
+            handleError(IllegalStateException("API key is not configured. Please configure your API key in Settings | Tools | Cline"))
+            return
+        }
+        
+        if (settings.state.provider != ClineSettings.Provider.OPENROUTER) {
+            handleError(IllegalStateException("Provider must be set to OpenRouter in Settings | Tools | Cline"))
+            return
+        }
+
         // Add the user message to the list
         addMessage(ClineMessage(
             role = ClineMessage.Role.USER,

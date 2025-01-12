@@ -27,8 +27,8 @@ class ClineSettings(private val project: Project) : PersistentStateComponent<Cli
     }
 
     data class State(
-        var provider: Provider = Provider.OPENAI,
-        var model: String = "gpt-3.5-turbo",
+        var provider: Provider = Provider.OPENROUTER,
+        var model: String = "openai/gpt-3.5-turbo",
         var temperature: Double = 0.7,
         var maxTokens: Int = 2048,
         var openRouterBaseUrl: String = "https://openrouter.ai/api/v1"

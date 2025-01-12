@@ -1,8 +1,8 @@
   plugins {
     id("java")
-    id("org.jetbrains.kotlin.jvm") version "1.9.25"
+    id("org.jetbrains.kotlin.jvm") version "1.9.22"
     id("org.jetbrains.intellij") version "1.17.4"
-    kotlin("plugin.serialization") version "1.9.25"
+    kotlin("plugin.serialization") version "1.9.22"
   }
 
 group = "com.etdofresh"
@@ -32,7 +32,7 @@ kotlin {
 intellij {
   version.set("2024.1.7")
   type.set("IC") // Target IDE Platform
-  instrumentCode.set(false) // Disable instrumentation to avoid JDK path issues
+  instrumentCode.set(true)
 
   plugins.set(listOf(
     "com.intellij.platform.images", // Required for AllIcons

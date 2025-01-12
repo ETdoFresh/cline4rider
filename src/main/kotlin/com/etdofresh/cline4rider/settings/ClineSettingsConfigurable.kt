@@ -31,7 +31,7 @@ class ClineSettingsConfigurable(private val project: Project) : Configurable {
         // Provider
         panel.add(JBLabel("Provider:"), cc.xy(1, 1))
         providerField = com.intellij.openapi.ui.ComboBox(ClineSettings.Provider.values()).apply {
-            selectedItem = ClineSettings.Provider.OPENAI
+            selectedItem = ClineSettings.Provider.OPENROUTER
         }
         panel.add(providerField, cc.xy(3, 1))
         
@@ -45,7 +45,7 @@ class ClineSettingsConfigurable(private val project: Project) : Configurable {
         // Model
         panel.add(JBLabel("Model:"), cc.xy(1, 5))
         modelField = JBTextField().apply {
-            emptyText.text = "gpt-3.5-turbo"
+            emptyText.text = "openai/gpt-3.5-turbo"
         }
         panel.add(modelField, cc.xy(3, 5))
         
@@ -65,12 +65,12 @@ class ClineSettingsConfigurable(private val project: Project) : Configurable {
 
         // OpenRouter Base URL
         openRouterBaseUrlLabel = JBLabel("OpenRouter Base URL:").apply {
-            isVisible = false
+            isVisible = true
         }
         panel.add(openRouterBaseUrlLabel, cc.xy(1, 11))
         openRouterBaseUrlField = JBTextField().apply {
             emptyText.text = "https://openrouter.ai/api/v1"
-            isVisible = false
+            isVisible = true
         }
         panel.add(openRouterBaseUrlField, cc.xy(3, 11))
 

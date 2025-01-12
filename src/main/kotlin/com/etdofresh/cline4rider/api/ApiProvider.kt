@@ -20,10 +20,32 @@ data class ResponseStats(
 class ApiProvider(private val project: Project) {
     private val logger = Logger.getInstance(ApiProvider::class.java)
 
+    private var openRouterClient: OpenRouterClient? = null
+
     fun sendMessages(messages: List<ClineMessage>, onChunk: ((String, ResponseStats?) -> Unit)? = null): String {
         val settings = ClineSettings.getInstance(project)
-        val openRouterClient = OpenRouterClient(settings)
-        return openRouterClient.sendMessages(messages, onChunk)
+        
+        try {
+            // Initialize client if needed
+            if (openRouterClient == null) {
+                openRouterClient = OpenRouterClient(settings)
+            }
+            
+            // Validate API key
+            if (settings.getApiKey().isNullOrEmpty()) {
+                throw IllegalStateException("API key is not configured. Please configure your API key in Settings | Tools | Cline")
+            }
+            
+            // Validate provider
+            if (settings.state.provider != ClineSettings.Provider.OPENROUTER) {
+                throw IllegalStateException("Provider must be set to OpenRouter in Settings | Tools | Cline")
+            }
+            
+            return openRouterClient!!.sendMessages(messages, onChunk)
+        } catch (e: Exception) {
+            logger.error("Failed to send message", e)
+            throw e
+        }
     }
 
     companion object {
