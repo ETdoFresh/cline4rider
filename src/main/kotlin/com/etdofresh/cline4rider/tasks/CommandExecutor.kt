@@ -7,6 +7,15 @@ import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.openapi.fileEditor.FileDocumentManager
 import com.intellij.openapi.editor.Document
+import com.intellij.openapi.wm.ToolWindowManager
+import com.intellij.execution.process.OSProcessHandler
+import com.intellij.execution.filters.TextConsoleBuilderFactory
+import com.intellij.execution.ui.ConsoleView
+import com.intellij.execution.ui.RunContentDescriptor
+import com.intellij.execution.ui.RunContentManager
+import com.intellij.execution.executors.DefaultRunExecutor
+import com.intellij.openapi.actionSystem.DefaultActionGroup
+import javax.swing.JComponent
 
 class CommandExecutor(private val project: Project) {
     private val logger = Logger.getInstance(CommandExecutor::class.java)
@@ -212,30 +221,66 @@ class CommandExecutor(private val project: Project) {
         val requiresApproval = params["requires_approval"]?.toBoolean() ?: true
 
         return try {
-            // Create process builder
-            val processBuilder = if (System.getProperty("os.name").lowercase().contains("windows")) {
-                ProcessBuilder("cmd.exe", "/c", command)
-            } else {
-                ProcessBuilder("sh", "-c", command)
+            var success = false
+            com.intellij.openapi.application.ApplicationManager.getApplication().invokeAndWait {
+                try {
+                    // Get working directory
+                    val workingDir = project.basePath?.let { java.io.File(it) }
+                        ?: throw IllegalStateException("Project base path not found")
+
+                    // Create process handler
+                    val processBuilder = ProcessBuilder()
+                    processBuilder.directory(workingDir)
+                    
+                    // Set up command
+                    val commandList = if (System.getProperty("os.name").lowercase().contains("windows")) {
+                        listOf("cmd.exe", "/c", command)
+                    } else {
+                        listOf("sh", "-c", command)
+                    }
+                    processBuilder.command(commandList)
+                    
+                    // Start process
+                    val process = processBuilder.start()
+                    val processHandler = OSProcessHandler(process, command)
+                    
+                    // Create console
+                    val consoleBuilder = TextConsoleBuilderFactory.getInstance().createBuilder(project)
+                    val console = consoleBuilder.console
+                    
+                    // Create actions toolbar
+                    val actions = DefaultActionGroup()
+                    
+                    // Create content descriptor
+                    val descriptor = RunContentDescriptor(
+                        console,
+                        processHandler,
+                        console.component,
+                        "Cline Command",
+                        null
+                    )
+                    
+                    // Show in Run tool window
+                    RunContentManager.getInstance(project).showRunContent(
+                        DefaultRunExecutor.getRunExecutorInstance(),
+                        descriptor
+                    )
+                    
+                    // Start process and attach console
+                    console.attachToProcess(processHandler)
+                    processHandler.startNotify()
+                    
+                    success = true
+                    success = true
+                } catch (e: Exception) {
+                    throw e
+                }
             }
 
-            // Set working directory
-            processBuilder.directory(project.basePath?.let { java.io.File(it) })
-
-            // Start process
-            val process = processBuilder.start()
-
-            // Capture output
-            val output = process.inputStream.bufferedReader().readText()
-            val error = process.errorStream.bufferedReader().readText()
-
-            // Wait for completion
-            val exitCode = process.waitFor()
-
-            if (exitCode == 0) {
-                CommandResult(true, if (output.isNotEmpty()) output else "Command executed successfully: $command")
+            if (success) {
+                CommandResult(true, "Command sent to terminal: $command")
             } else {
-                CommandResult(false, if (error.isNotEmpty()) error else "Command failed with exit code $exitCode")
+                CommandResult(false, "Failed to send command to terminal")
             }
         } catch (e: Exception) {
             logger.error("Failed to execute command: $command", e)
