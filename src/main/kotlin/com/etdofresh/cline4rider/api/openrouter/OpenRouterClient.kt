@@ -32,7 +32,7 @@ class OpenRouterClient(private val settings: ClineSettings) {
 
     private fun fetchGenerationStats(id: String, apiKey: String): ResponseStats? {
         return try {
-            logger.warn("Fetching generation stats for id: $id")
+            logger.debug("Fetching generation stats for id: $id")
             
             val baseUrl = settings.state.openRouterBaseUrl.removeSuffix("/")
             val statsResponse = client.newCall(
@@ -44,13 +44,13 @@ class OpenRouterClient(private val settings: ClineSettings) {
             
             if (statsResponse.isSuccessful) {
                 val responseBody = statsResponse.body?.string()
-                logger.warn("Generation stats response: $responseBody")
+                logger.debug("Generation stats response: $responseBody")
                 if (!responseBody.isNullOrBlank()) {
                     try {
                         val response = json.decodeFromString<GenerationStatsResponse>(responseBody)
                         val stats = response.data
                         if (stats.total_cost > 0.0) {
-                            logger.warn("Successfully parsed stats with cost: ${stats.total_cost}")
+                            logger.debug("Successfully parsed stats with cost: ${stats.total_cost}")
                             ResponseStats(
                                 total_cost = stats.total_cost,
                                 tokens_prompt = stats.tokens_prompt,
@@ -60,17 +60,15 @@ class OpenRouterClient(private val settings: ClineSettings) {
                                 cache_discount = stats.cache_discount
                             )
                         } else {
-                            logger.warn("Stats had zero cost")
+                            logger.debug("Stats had zero cost")
                             null
                         }
                     } catch (e: Exception) {
-                        logger.warn("Failed to parse generation stats: $responseBody")
-                        logger.warn("Parse error: ${e.message}")
-                        e.printStackTrace()
+                        logger.warn("Failed to parse generation stats", e)
                         null
                     }
                 } else {
-                    logger.warn("Empty response body")
+                    logger.debug("Empty response body")
                     null
                 }
             } else {
@@ -167,7 +165,7 @@ class OpenRouterClient(private val settings: ClineSettings) {
                                                 streamComplete = true
                                                 // Fetch stats in a separate thread with UI update
                                                 lastChunkId?.let { id ->
-                                                    logger.warn("Stream complete, waiting before fetching stats for ID: $id")
+                                                    logger.debug("Stream complete, waiting before fetching stats for ID: $id")
                                                     Thread {
                                                         // Add a 1000ms delay before fetching stats
                                                         Thread.sleep(1000)
@@ -184,7 +182,7 @@ class OpenRouterClient(private val settings: ClineSettings) {
                                             try {
                                                 val chunk = json.decodeFromString<ChatCompletionChunk>(data)
                                                 lastChunkId = chunk.id
-                                                logger.warn("Got chunk ID: ${chunk.id}")
+                                                logger.debug("Got chunk ID: ${chunk.id}")
                                                 val content = chunk.choices.firstOrNull()?.delta?.content
                                                 if (content != null) {
                                                     fullResponse.append(content)
@@ -193,8 +191,7 @@ class OpenRouterClient(private val settings: ClineSettings) {
                                                     }
                                                 }
                                             } catch (e: Exception) {
-                                                logger.warn("Failed to parse chunk: $data")
-                                                logger.warn("Parse error: ${e.message}")
+                                                logger.warn("Failed to parse chunk", e)
                                             }
                                         }
                                     }
@@ -227,7 +224,7 @@ class OpenRouterClient(private val settings: ClineSettings) {
                     ?: throw OpenRouterException("No response message found")
                 
                 // Get stats for non-streaming response
-                logger.warn("Non-streaming response complete, fetching stats for ID: ${parsedResponse.id}")
+                logger.debug("Non-streaming response complete, fetching stats for ID: ${parsedResponse.id}")
                 val stats = fetchGenerationStats(parsedResponse.id, apiKey)
                 if (stats != null) {
                     onChunk?.invoke(content, stats)

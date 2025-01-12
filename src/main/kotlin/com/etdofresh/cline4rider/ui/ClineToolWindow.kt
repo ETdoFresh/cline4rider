@@ -37,7 +37,6 @@ import java.io.File
 class ClineToolWindow(private val project: Project, private val toolWindow: ToolWindow) {
     companion object {
         private val DEFAULT_SYSTEM_PROMPT = """You are Cline, an AI coding assistant. Your role is to help developers write, modify, and understand code. You should:
-        minimumSize = Dimension(JBUI.scale(300), JBUI.scale(100))
             |1. Provide clear, concise explanations
             |2. Write efficient, well-documented code
             |3. Follow best practices and design patterns
