@@ -39,6 +39,28 @@ class TaskProcessor(private val project: Project) {
 
     fun processAssistantResponse(response: String): String? {
         return try {
+            // First check if this is a task completion message without a tool call
+            if (containsTaskCompletion(response)) {
+                // If it's a task completion message and doesn't use attempt_completion tool,
+                // return error immediately
+                if (!containsToolUsage(response) || !response.contains("<attempt_completion>")) {
+                    return """[ERROR] Task completion detected without using the attempt_completion tool! Please retry with proper tool use.
+
+# Reminder: Task Completion Format
+
+When completing a task, you must use the attempt_completion tool:
+
+<attempt_completion>
+<result>
+Your task completion message here...
+</result>
+</attempt_completion>
+
+Always use this format to properly complete tasks.
+(This is an automated message, so do not respond to it conversationally.)"""
+                }
+            }
+
             // Check if the response contains any XML-like tool usage
             if (!containsToolUsage(response)) {
                 return """[ERROR] You did not use a tool in your previous response! Please retry with a tool use.
@@ -74,18 +96,28 @@ Otherwise, if you have not completed the task and do not need additional informa
             // Now try to parse the tool
             val tool = parseToolFromResponse(response)
             if (tool == null) {
+                logger.warn("Failed to parse tool from response")
                 return "Failed to parse tool from response. Please check the XML format and try again."
             }
 
             // Check for required parameters based on tool type
             val missingParam = checkMissingRequiredParams(tool)
             if (missingParam != null) {
+                logger.warn("Missing required parameter: $missingParam")
                 return "Missing value for required parameter '${missingParam}'. Please retry with complete response."
             }
 
             // Execute the command
             val result = commandExecutor.executeCommand(tool)
-            if (!result.success) return null
+            if (!result.success) {
+                logger.warn("Command execution failed: ${result.content}")
+                return result.content ?: "Command execution failed"
+            }
+
+            // For attempt_completion, return null to suppress any output
+            if (tool.name == "attempt_completion") {
+                return null
+            }
 
             // Format response based on tool type and result
             formatToolResponse(tool.name, tool.parameters, result)
@@ -93,6 +125,22 @@ Otherwise, if you have not completed the task and do not need additional informa
             logger.error("Failed to process assistant response", e)
             null
         }
+    }
+
+    private fun containsTaskCompletion(response: String): Boolean {
+        // Check for task completion message patterns
+        val patterns = listOf(
+            // Pattern 1: Bold title followed by description with newlines
+            """\*\*[^*]+\*\*\s*\n\n.+""".toRegex(RegexOption.DOT_MATCHES_ALL),
+            // Pattern 2: Bold title followed by immediate text
+            """\*\*[^*]+\*\*\s*\n[^\n]+""".toRegex(),
+            // Pattern 3: Just bold title followed by "complete" or "completed"
+            """\*\*[^*]+\*\*\s*(?:\n.*(?:complete|completed).*)?""".toRegex(RegexOption.IGNORE_CASE),
+            // Pattern 4: Just bold title
+            """\*\*[^*]+\*\*""".toRegex()
+        )
+        
+        return patterns.any { it.containsMatchIn(response) }
     }
 
     private fun containsToolUsage(response: String): Boolean {

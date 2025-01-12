@@ -5,20 +5,26 @@ import com.intellij.openapi.diagnostic.Logger
 class DiffProcessor {
     private val logger = Logger.getInstance(DiffProcessor::class.java)
 
-    fun processDiff(originalContent: String, diff: String): String {
+    data class DiffResult(
+        val success: Boolean,
+        val content: String,
+        val error: String? = null
+    )
+
+    fun processDiff(originalContent: String, diff: String): DiffResult {
         var result = originalContent
         val blocks = extractDiffBlocks(diff)
         
         for (block in blocks) {
-            try {
-                result = applyDiffBlock(result, block)
-            } catch (e: Exception) {
-                logger.error("Failed to apply diff block", e)
-                throw e
+            val blockResult = applyDiffBlock(result, block)
+            if (!blockResult.success) {
+                logger.warn("Failed to apply diff block: ${blockResult.error}")
+                return blockResult
             }
+            result = blockResult.content
         }
         
-        return result
+        return DiffResult(true, result)
     }
 
     private fun extractDiffBlocks(diff: String): List<DiffBlock> {
@@ -62,21 +68,22 @@ class DiffProcessor {
         return blocks
     }
 
-    private fun applyDiffBlock(content: String, block: DiffBlock): String {
+    private fun applyDiffBlock(content: String, block: DiffBlock): DiffResult {
         val searchContent = block.search
         val replaceContent = block.replace
         
         // Find the first occurrence of the search content
         val index = content.indexOf(searchContent)
         if (index == -1) {
-            logger.error("Search content not found: $searchContent")
-            throw IllegalStateException("Search content not found in the original text")
+            logger.warn("Search content not found: $searchContent")
+            return DiffResult(false, content, "Could not find the text to replace. The file may have been modified.")
         }
 
         // Replace the content
-        return content.substring(0, index) + 
-               replaceContent + 
-               content.substring(index + searchContent.length)
+        val newContent = content.substring(0, index) + 
+                        replaceContent + 
+                        content.substring(index + searchContent.length)
+        return DiffResult(true, newContent)
     }
 
     data class DiffBlock(

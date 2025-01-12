@@ -221,31 +221,7 @@ class ChatViewModel(private val project: Project) {
                         ApplicationManager.getApplication().invokeLater {
                             try {
                                 val currentText = currentContent.toString()
-                                val toolCalls = if (stats != null) {
-                                    // Only parse tools when we receive stats (streaming complete)
-                                    // Process the current text
-                                    val taskContent = extractTaskContent(currentText)
-                                    val contentToProcess = taskContent ?: currentText
-                                    // First extract the tool XML
-                                    val toolXml = taskProcessor.extractToolXml(contentToProcess)
-                                    if (toolXml != null) {
-                                        val tool = taskProcessor.parseToolFromResponse(toolXml)
-                                        if (tool != null) {
-                                            listOf(ClineMessage.ToolCall(
-                                                id = System.currentTimeMillis().toString(),
-                                                name = tool.name,
-                                                arguments = toolXml,
-                                                output = null // Output will be set after execution when approved
-                                            ))
-                                        } else {
-                                            emptyList()
-                                        }
-                                    } else {
-                                        emptyList()
-                                    }
-                                } else {
-                                    emptyList()
-                                }
+                                val toolCalls = emptyList<ClineMessage.ToolCall>()
                                 
                                 val updatedAssistantMessage = messages.last().copy(
                                     content = listOf(ClineMessage.Content.Text(text = currentText)),
@@ -294,12 +270,8 @@ class ChatViewModel(private val project: Project) {
             }
             setProcessing(false)
 
-            // Show error notification
-            com.intellij.openapi.ui.Messages.showErrorDialog(
-                project,
-                "Error: ${e.message}",
-                "Chat Error"
-            )
+            // Log error instead of showing popup
+            logger.warn("Chat error: ${e.message}")
         }
     }
 

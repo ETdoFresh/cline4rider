@@ -919,24 +919,8 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     }
 
     private fun sendMessage(content: List<ClineMessage.Content>) {
-        if (viewModel.isProcessing()) {
-            JOptionPane.showMessageDialog(
-                contentPanel,
-                "Please wait for the current message to finish processing",
-                "Processing",
-                JOptionPane.INFORMATION_MESSAGE
-            )
-            return
-        }
-        
-        // Check if API key is configured
-        if (viewModel.getApiKey().isNullOrBlank()) {
-            JOptionPane.showMessageDialog(
-                contentPanel,
-                "Please configure your API key in Settings | Tools | Cline",
-                "API Key Required",
-                JOptionPane.WARNING_MESSAGE
-            )
+        // Don't send if already processing
+        if (viewModel.isProcessing() || viewModel.getApiKey().isNullOrBlank()) {
             return
         }
         
@@ -960,12 +944,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             // Switch to chat tab to show the conversation
             tabbedPane.selectedIndex = 1
         } catch (e: Exception) {
-            JOptionPane.showMessageDialog(
-                contentPanel,
-                "Failed to send message: ${e.message}",
-                "Error",
-                JOptionPane.ERROR_MESSAGE
-            )
+            logger.warn("Failed to send message: ${e.message}")
         }
     }
 

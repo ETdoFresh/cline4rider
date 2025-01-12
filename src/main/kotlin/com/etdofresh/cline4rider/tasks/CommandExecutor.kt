@@ -20,8 +20,20 @@ class CommandExecutor(private val project: Project) {
             "search_files" -> handleSearchFiles(tool.parameters)
             "list_code_definition_names" -> handleListCodeDefinitions(tool.parameters)
             "execute_command" -> handleExecuteCommand(tool.parameters)
+            "attempt_completion" -> handleAttemptCompletion(tool.parameters)
+            "ask_followup_question" -> handleAskFollowupQuestion(tool.parameters)
             else -> CommandResult(false, "Unsupported tool: ${tool.name}")
         }
+    }
+
+    private fun handleAttemptCompletion(params: Map<String, String>): CommandResult {
+        // Return success with no content to prevent showing response or approve buttons
+        return CommandResult(true, null)
+    }
+
+    private fun handleAskFollowupQuestion(params: Map<String, String>): CommandResult {
+        val question = params["question"] ?: return CommandResult(false, "Question not provided")
+        return CommandResult(true, question)
     }
 
     private fun handleWriteToFile(params: Map<String, String>): CommandResult {
@@ -96,7 +108,11 @@ class CommandExecutor(private val project: Project) {
                         val document = FileDocumentManager.getInstance().getDocument(file)
                             ?: throw IllegalStateException("Could not get document for file: $path")
                         
-                        document.setText(processDiff(document.text, diff))
+                        val diffResult = processDiff(document.text, diff)
+                        if (!diffResult.success) {
+                            throw IllegalStateException(diffResult.error ?: "Failed to process diff")
+                        }
+                        document.setText(diffResult.content)
                         FileDocumentManager.getInstance().saveDocument(document)
                     }
                     result = CommandResult(true, "File successfully updated: $path")
@@ -106,7 +122,7 @@ class CommandExecutor(private val project: Project) {
             }
             result ?: CommandResult(false, "Failed to update file")
         } catch (e: Exception) {
-            logger.error("Failed to replace in file: $path", e)
+            logger.warn("Failed to replace in file: $path - ${e.message}")
             CommandResult(false, e.message)
         }
     }
@@ -256,7 +272,7 @@ class CommandExecutor(private val project: Project) {
 
     private val diffProcessor = DiffProcessor()
 
-    private fun processDiff(originalContent: String, diff: String): String {
+    private fun processDiff(originalContent: String, diff: String): DiffProcessor.DiffResult {
         return diffProcessor.processDiff(originalContent, diff)
     }
 }
