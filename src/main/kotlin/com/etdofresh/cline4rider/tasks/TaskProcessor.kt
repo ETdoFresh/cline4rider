@@ -1,56 +1,44 @@
 package com.etdofresh.cline4rider.tasks
 
-import com.etdofresh.cline4rider.model.ClineMessage
-import com.etdofresh.cline4rider.task.model.ClineTask
+import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.project.Project
-import java.time.Instant
+import com.etdofresh.cline4rider.model.ClineMessage
 
 class TaskProcessor(private val project: Project) {
-    private val messages = mutableListOf<ClineMessage>()
-    private var currentTask: ClineTask? = null
+    private val logger = Logger.getInstance(TaskProcessor::class.java)
+    private val toolParser = ToolParser()
+    private val commandExecutor = CommandExecutor(project)
 
-    fun processTask(task: ClineTask) {
-        currentTask = task
-        messages.clear()
+    fun processAssistantResponse(response: ClineMessage): Boolean {
+        return try {
+            // Extract text content from the message
+            val textContent = response.content
+                .filterIsInstance<ClineMessage.Content.Text>()
+                .joinToString("\n") { it.text }
 
-        // Add initial system message
-        addSystemMessage("""
-            Processing task: ${task.title}
-            Description: ${task.description}
-            Created: ${Instant.ofEpochMilli(task.createdAt)}
-        """.trimIndent())
+            // Extract tool from the response
+            val tool = toolParser.parseToolFromResponse(textContent)
+                ?: return false // No tool found in response
+
+            // Execute the command
+            commandExecutor.executeCommand(tool)
+        } catch (e: Exception) {
+            logger.error("Failed to process assistant response", e)
+            false
+        }
     }
 
-    fun addUserMessage(content: String) {
-        messages.add(ClineMessage(
-            role = ClineMessage.Role.USER,
-            content = listOf(ClineMessage.Content.Text(text = content)),
-            timestamp = System.currentTimeMillis()
-        ))
-    }
+    fun processAssistantResponse(response: String): Boolean {
+        return try {
+            // Extract tool from the response
+            val tool = toolParser.parseToolFromResponse(response)
+                ?: return false // No tool found in response
 
-    fun addAssistantMessage(content: String) {
-        messages.add(ClineMessage(
-            role = ClineMessage.Role.ASSISTANT,
-            content = listOf(ClineMessage.Content.Text(text = content)),
-            timestamp = System.currentTimeMillis()
-        ))
-    }
-
-    fun addSystemMessage(content: String) {
-        messages.add(ClineMessage(
-            role = ClineMessage.Role.SYSTEM,
-            content = listOf(ClineMessage.Content.Text(text = content)),
-            timestamp = System.currentTimeMillis()
-        ))
-    }
-
-    fun getMessages(): List<ClineMessage> = messages.toList()
-
-    fun getCurrentTask(): ClineTask? = currentTask
-
-    fun clear() {
-        messages.clear()
-        currentTask = null
+            // Execute the command
+            commandExecutor.executeCommand(tool)
+        } catch (e: Exception) {
+            logger.error("Failed to process assistant response", e)
+            false
+        }
     }
 }
