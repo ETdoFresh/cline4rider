@@ -171,21 +171,20 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             }
             
             add(topPanel, BorderLayout.NORTH)
-            add(chatPanel, BorderLayout.CENTER)
+            
+            // Create scroll pane for chat content only
+            val scrollPane = JBScrollPane(chatPanel).apply {
+                border = BorderFactory.createEmptyBorder()
+                viewport.background = Color(45, 45, 45)
+                verticalScrollBar.unitIncrement = 16
+                verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
+                horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
+            }
+            add(scrollPane, BorderLayout.CENTER)
         }
         
-        // Enable smooth scrolling
-        UIManager.put("ScrollBar.smoothScrolling", true)
-        val scrollPane = JBScrollPane(messagesPanel).apply {
-            border = BorderFactory.createEmptyBorder()
-            viewport.background = Color(45, 45, 45)
-            verticalScrollBar.unitIncrement = 16
-            verticalScrollBarPolicy = ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED
-            horizontalScrollBarPolicy = ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER
-        }
-        
-        // Add scroll pane to chat area
-        chatAreaPanel.add(scrollPane, BorderLayout.CENTER)
+        // Add messages panel to chat area
+        chatAreaPanel.add(messagesPanel, BorderLayout.CENTER)
         
         // Create input panel with fixed height
         val inputPanel = createInputPanel()
