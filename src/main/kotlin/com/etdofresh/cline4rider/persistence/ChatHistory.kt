@@ -58,8 +58,9 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
                 message.role == ClineMessage.Role.ASSISTANT && 
                 conversation.messages.isNotEmpty() && 
                 conversation.messages.last().role == "ASSISTANT" -> {
-                    // Update existing assistant message
-                    conversation.messages[conversation.messages.lastIndex] = SerializableMessage.fromClineMessage(message)
+                    // Update existing assistant message with all properties
+                    val updatedMessage = SerializableMessage.fromClineMessage(message)
+                    conversation.messages[conversation.messages.lastIndex] = updatedMessage
                 }
                 
                 // For non-assistant messages or if last message isn't from assistant, add as new
@@ -71,7 +72,8 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
                         message.content.filterIsInstance<ClineMessage.Content.Text>().map { it.text }
                     }
                     if (!isDuplicate) {
-                        conversation.messages.add(SerializableMessage.fromClineMessage(message))
+                        val newMessage = SerializableMessage.fromClineMessage(message)
+                        conversation.messages.add(newMessage)
                     }
                 }
             }
@@ -89,8 +91,6 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
     override fun loadState(state: ChatHistory) {
         // Clear existing conversations
         conversations.clear()
-        
-        // Copy all conversations from state
         conversations.addAll(state.conversations)
         currentConversationId = state.currentConversationId
         
@@ -118,15 +118,15 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
     }
 
     fun getConversationMessages(conversationId: String): List<ClineMessage> {
-        return conversations.find { it.id == conversationId }?.messages
-            ?.map { it.toClineMessage() } ?: emptyList()
+        return conversations.find { it.id == conversationId }?.let { conversation ->
+            conversation.messages.map { it.toClineMessage() }
+        } ?: emptyList()
     }
 
     fun getRecentConversations(offset: Int = 0): List<Conversation> {
         // Ensure conversations are sorted by timestamp
         conversations.sortByDescending { it.timestamp }
-        val result = conversations.drop(offset).take(PAGE_SIZE)
-        return result
+        return conversations.drop(offset).take(PAGE_SIZE)
     }
 
     fun hasMoreConversations(offset: Int): Boolean {
@@ -152,14 +152,6 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         @get:XCollection(style = XCollection.Style.v2, elementTypes = [SerializableContent.Text::class, SerializableContent.ImageUrl::class])
         var content: MutableList<SerializableContent> = mutableListOf()
 
-        @get:Tag("content")
-        var legacyContent: String? = null
-            set(value) {
-                field = value
-                if (value != null && content.isEmpty()) {
-                    content.add(SerializableContent.Text(text = value))
-                }
-            }
         
         @get:Attribute
         var timestamp: Long = 0
@@ -201,11 +193,6 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         }
 
         fun toClineMessage(): ClineMessage {
-            // Convert legacy content if needed
-            if (content.isEmpty() && !legacyContent.isNullOrEmpty()) {
-                content.add(SerializableContent.Text(text = legacyContent!!))
-            }
-
             val convertedContent = content.map { content ->
                 when (content) {
                     is SerializableContent.Text -> ClineMessage.Content.Text(
