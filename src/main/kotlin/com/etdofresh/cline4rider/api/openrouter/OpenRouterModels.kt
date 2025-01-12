@@ -3,12 +3,12 @@ package com.etdofresh.cline4rider.api.openrouter
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class GenerationStats(
-    val data: GenerationData
+data class GenerationStatsResponse(
+    val data: GenerationStats
 )
 
 @Serializable
-data class GenerationData(
+data class GenerationStats(
     val id: String,
     val model: String,
     val streamed: Boolean,
@@ -19,7 +19,8 @@ data class GenerationData(
     val native_tokens_prompt: Int,
     val native_tokens_completion: Int,
     val total_cost: Double,
-    val cache_discount: Double? = null
+    val cache_discount: Double? = null,
+    val origin: String? = null
 )
 
 @Serializable
