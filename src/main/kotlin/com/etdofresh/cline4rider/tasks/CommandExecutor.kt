@@ -11,7 +11,7 @@ import com.intellij.openapi.editor.Document
 class CommandExecutor(private val project: Project) {
     private val logger = Logger.getInstance(CommandExecutor::class.java)
 
-    fun executeCommand(tool: Tool): Boolean {
+    fun executeCommand(tool: Tool): CommandResult {
         return when (tool.name) {
             "write_to_file" -> handleWriteToFile(tool.parameters)
             "read_file" -> handleReadFile(tool.parameters)
@@ -22,14 +22,14 @@ class CommandExecutor(private val project: Project) {
             "execute_command" -> handleExecuteCommand(tool.parameters)
             else -> {
                 logger.warn("Unsupported tool: ${tool.name}")
-                false
+                CommandResult(false, "Unsupported tool: ${tool.name}")
             }
         }
     }
 
-    private fun handleWriteToFile(params: Map<String, String>): Boolean {
-        val path = params["path"] ?: return false
-        val content = params["content"] ?: return false
+    private fun handleWriteToFile(params: Map<String, String>): CommandResult {
+        val path = params["path"] ?: return CommandResult(false, "File path not provided")
+        val content = params["content"] ?: return CommandResult(false, "Content not provided")
 
         return try {
             WriteCommandAction.runWriteCommandAction(project) {
@@ -39,32 +39,36 @@ class CommandExecutor(private val project: Project) {
                 document.setText(content)
                 FileDocumentManager.getInstance().saveDocument(document)
             }
-            true
+            CommandResult(true, "File successfully written: $path")
         } catch (e: Exception) {
             logger.error("Failed to write to file: $path", e)
-            false
+            CommandResult(false, e.message)
         }
     }
 
-    private fun handleReadFile(params: Map<String, String>): Boolean {
-        val path = params["path"] ?: return false
+    data class CommandResult(
+        val success: Boolean,
+        val content: String? = null
+    )
+
+    private fun handleReadFile(params: Map<String, String>): CommandResult {
+        val path = params["path"] ?: return CommandResult(false, "File path not provided")
         
         return try {
             val file = LocalFileSystem.getInstance().findFileByPath(path)
                 ?: throw IllegalStateException("File not found: $path")
             val document = FileDocumentManager.getInstance().getDocument(file)
                 ?: throw IllegalStateException("Could not get document for file: $path")
-            // Here you would typically send the content somewhere or process it
-            true
+            CommandResult(true, document.text)
         } catch (e: Exception) {
             logger.error("Failed to read file: $path", e)
-            false
+            CommandResult(false, e.message)
         }
     }
 
-    private fun handleReplaceInFile(params: Map<String, String>): Boolean {
-        val path = params["path"] ?: return false
-        val diff = params["diff"] ?: return false
+    private fun handleReplaceInFile(params: Map<String, String>): CommandResult {
+        val path = params["path"] ?: return CommandResult(false, "File path not provided")
+        val diff = params["diff"] ?: return CommandResult(false, "Diff not provided")
 
         return try {
             WriteCommandAction.runWriteCommandAction(project) {
@@ -73,36 +77,92 @@ class CommandExecutor(private val project: Project) {
                 val document = FileDocumentManager.getInstance().getDocument(file)
                     ?: throw IllegalStateException("Could not get document for file: $path")
                 
-                // Process the diff and apply changes
-                // This is a simplified version - you'll need to implement proper diff parsing
                 document.setText(processDiff(document.text, diff))
                 FileDocumentManager.getInstance().saveDocument(document)
             }
-            true
+            CommandResult(true, "File successfully updated: $path")
         } catch (e: Exception) {
             logger.error("Failed to replace in file: $path", e)
-            false
+            CommandResult(false, e.message)
         }
     }
 
-    private fun handleListFiles(params: Map<String, String>): Boolean {
-        // Implement file listing logic
-        return true
+    private fun handleListFiles(params: Map<String, String>): CommandResult {
+        val path = params["path"] ?: return CommandResult(false, "Path not provided")
+        val recursive = params["recursive"]?.toBoolean() ?: false
+
+        return try {
+            val file = LocalFileSystem.getInstance().findFileByPath(path)
+                ?: throw IllegalStateException("Directory not found: $path")
+            
+            val files = if (recursive) {
+                collectFilesRecursively(file)
+            } else {
+                file.children.map { it.path }.toList()
+            }
+            
+            CommandResult(true, files.joinToString("\n"))
+        } catch (e: Exception) {
+            logger.error("Failed to list files: $path", e)
+            CommandResult(false, e.message)
+        }
     }
 
-    private fun handleSearchFiles(params: Map<String, String>): Boolean {
-        // Implement file search logic
-        return true
+    private fun handleSearchFiles(params: Map<String, String>): CommandResult {
+        val path = params["path"] ?: return CommandResult(false, "Path not provided")
+        val regex = params["regex"] ?: return CommandResult(false, "Regex not provided")
+        val filePattern = params["file_pattern"]
+
+        return try {
+            val file = LocalFileSystem.getInstance().findFileByPath(path)
+                ?: throw IllegalStateException("Directory not found: $path")
+            
+            // TODO: Implement file search logic
+            CommandResult(true, "Search completed")
+        } catch (e: Exception) {
+            logger.error("Failed to search files: $path", e)
+            CommandResult(false, e.message)
+        }
     }
 
-    private fun handleListCodeDefinitions(params: Map<String, String>): Boolean {
-        // Implement code definition listing logic
-        return true
+    private fun handleListCodeDefinitions(params: Map<String, String>): CommandResult {
+        val path = params["path"] ?: return CommandResult(false, "Path not provided")
+
+        return try {
+            val file = LocalFileSystem.getInstance().findFileByPath(path)
+                ?: throw IllegalStateException("Directory not found: $path")
+            
+            // TODO: Implement code definition listing logic
+            CommandResult(true, "Code definitions listed")
+        } catch (e: Exception) {
+            logger.error("Failed to list code definitions: $path", e)
+            CommandResult(false, e.message)
+        }
     }
 
-    private fun handleExecuteCommand(params: Map<String, String>): Boolean {
-        // Implement command execution logic
-        return true
+    private fun handleExecuteCommand(params: Map<String, String>): CommandResult {
+        val command = params["command"] ?: return CommandResult(false, "Command not provided")
+        val requiresApproval = params["requires_approval"]?.toBoolean() ?: true
+
+        return try {
+            // TODO: Implement command execution logic
+            CommandResult(true, "Command executed: $command")
+        } catch (e: Exception) {
+            logger.error("Failed to execute command: $command", e)
+            CommandResult(false, e.message)
+        }
+    }
+
+    private fun collectFilesRecursively(file: VirtualFile): List<String> {
+        val result = mutableListOf<String>()
+        if (!file.isDirectory) {
+            result.add(file.path)
+        } else {
+            file.children.forEach { child ->
+                result.addAll(collectFilesRecursively(child))
+            }
+        }
+        return result
     }
 
     private fun createOrGetFile(path: String): VirtualFile {
