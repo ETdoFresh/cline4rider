@@ -1004,8 +1004,8 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 addMessageToUI(message)
             }
 
-            // Show approve/deny buttons if last message is from assistant
-            if (messages.lastOrNull()?.role == ClineMessage.Role.ASSISTANT) {
+            // Show approve/deny buttons only if last message is from assistant and we're not processing
+            if (messages.lastOrNull()?.role == ClineMessage.Role.ASSISTANT && !viewModel.isProcessing()) {
                 actionButtonsPanel.isVisible = true
             }
 
