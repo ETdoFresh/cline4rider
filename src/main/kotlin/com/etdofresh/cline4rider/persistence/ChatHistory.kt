@@ -151,6 +151,15 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         
         @get:XCollection(style = XCollection.Style.v2, elementTypes = [SerializableContent.Text::class, SerializableContent.ImageUrl::class])
         var content: MutableList<SerializableContent> = mutableListOf()
+
+        @get:Tag("content")
+        var legacyContent: String? = null
+            set(value) {
+                field = value
+                if (value != null && content.isEmpty()) {
+                    content.add(SerializableContent.Text(text = value))
+                }
+            }
         
         @get:Attribute
         var timestamp: Long = 0
@@ -192,21 +201,28 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         }
 
         fun toClineMessage(): ClineMessage {
+            // Convert legacy content if needed
+            if (content.isEmpty() && !legacyContent.isNullOrEmpty()) {
+                content.add(SerializableContent.Text(text = legacyContent!!))
+            }
+
+            val convertedContent = content.map { content ->
+                when (content) {
+                    is SerializableContent.Text -> ClineMessage.Content.Text(
+                        text = content.text,
+                        type = content.type,
+                        cacheControl = content.cacheControl?.let { ClineMessage.CacheControl(it.type) }
+                    )
+                    is SerializableContent.ImageUrl -> ClineMessage.Content.ImageUrl(
+                        imageUrl = ClineMessage.ImageUrlData(content.imageUrl.url),
+                        type = content.type
+                    )
+                }
+            }
+
             return ClineMessage(
                 role = ClineMessage.Role.valueOf(role.uppercase()),
-                content = content.map { content ->
-                    when (content) {
-                        is SerializableContent.Text -> ClineMessage.Content.Text(
-                            text = content.text,
-                            type = content.type,
-                            cacheControl = content.cacheControl?.let { ClineMessage.CacheControl(it.type) }
-                        )
-                        is SerializableContent.ImageUrl -> ClineMessage.Content.ImageUrl(
-                            imageUrl = ClineMessage.ImageUrlData(content.imageUrl.url),
-                            type = content.type
-                        )
-                    }
-                },
+                content = convertedContent,
                 timestamp = timestamp,
                 toolCalls = toolCalls.map { it.toToolCall() },
                 cost = cost,

@@ -439,7 +439,9 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         
         // Message content
         if (firstUserMessage != null) {
-            val contentText = firstUserMessage.content.filterIsInstance<ClineMessage.Content.Text>()
+            // Convert to ClineMessage to handle content properly
+            val clineMessage = firstUserMessage.toClineMessage()
+            val contentText = clineMessage.content.filterIsInstance<ClineMessage.Content.Text>()
                 .joinToString("\n") { it.text }
             val content = JTextArea(contentText).apply {
                 background = Color(60, 60, 60)
@@ -558,27 +560,29 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 })
             } else {
                 validConversations.forEach { conversation ->
-                    val firstUserMessage = conversation.messages.first { it.role == "USER" }
-                    val messagePanel = JPanel(BorderLayout()).apply {
-                        background = Color(51, 51, 51)
-                        border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
-                        cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-                        addMouseListener(object : MouseAdapter() {
-                            override fun mouseClicked(e: MouseEvent) {
-                                viewModel.loadConversation(conversation.id)
-                                tabbedPane.selectedIndex = 1 // Switch to chat tab
-                            }
-                            override fun mouseEntered(e: MouseEvent) {
-                                background = Color(60, 60, 60)
-                            }
-                            override fun mouseExited(e: MouseEvent) {
-                                background = Color(51, 51, 51)
-                            }
-                        })
+            val firstUserMessage = conversation.messages.first { it.role == "USER" }
+            val messagePanel = JPanel(BorderLayout()).apply {
+                background = Color(51, 51, 51)
+                border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                cursor = Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
+                addMouseListener(object : MouseAdapter() {
+                    override fun mouseClicked(e: MouseEvent) {
+                        viewModel.loadConversation(conversation.id)
+                        tabbedPane.selectedIndex = 1 // Switch to chat tab
                     }
-                    
-                    val contentText = firstUserMessage.content.filterIsInstance<ClineMessage.Content.Text>()
-                        .joinToString("\n") { it.text }
+                    override fun mouseEntered(e: MouseEvent) {
+                        background = Color(60, 60, 60)
+                    }
+                    override fun mouseExited(e: MouseEvent) {
+                        background = Color(51, 51, 51)
+                    }
+                })
+            }
+            
+            // Convert the message to ClineMessage to handle content properly
+            val clineMessage = firstUserMessage.toClineMessage()
+            val contentText = clineMessage.content.filterIsInstance<ClineMessage.Content.Text>()
+                .joinToString("\n") { it.text }
                     val content = JTextArea(contentText).apply {
                         background = Color(51, 51, 51)
                         foreground = Color(220, 220, 220)
