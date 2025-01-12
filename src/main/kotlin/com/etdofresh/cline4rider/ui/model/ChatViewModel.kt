@@ -4,6 +4,7 @@ import com.etdofresh.cline4rider.model.ClineMessage
 import com.etdofresh.cline4rider.persistence.ChatHistory
 import com.etdofresh.cline4rider.api.ApiProvider
 import com.etdofresh.cline4rider.settings.ClineSettings
+import com.etdofresh.cline4rider.tasks.TaskProcessor
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
@@ -13,6 +14,7 @@ import com.intellij.openapi.application.ApplicationManager
 @Service(Service.Level.PROJECT)
 class ChatViewModel(private val project: Project) {
     private var systemPrompt: String? = null
+    private val taskProcessor = TaskProcessor(project)
     private var messages = mutableListOf<ClineMessage>()
     private var isProcessing = false
     private val messageListeners = mutableListOf<(List<ClineMessage>) -> Unit>()
@@ -203,12 +205,31 @@ class ChatViewModel(private val project: Project) {
                         // Update message with new content and timestamp on every chunk
                         ApplicationManager.getApplication().invokeLater {
                             try {
+                                val currentText = currentContent.toString()
+                                val toolCalls = if (stats != null) {
+                                    // Only parse tools when we receive stats (streaming complete)
+                                    val tool = taskProcessor.parseToolFromResponse(currentText)
+                                    if (tool != null) {
+                                        listOf(ClineMessage.ToolCall(
+                                            id = System.currentTimeMillis().toString(),
+                                            name = tool.name,
+                                            arguments = currentText,
+                                            output = null // Output will be set after execution when approved
+                                        ))
+                                    } else {
+                                        emptyList()
+                                    }
+                                } else {
+                                    emptyList()
+                                }
+                                
                                 val updatedAssistantMessage = messages.last().copy(
-                                    content = listOf(ClineMessage.Content.Text(text = currentContent.toString())),
+                                    content = listOf(ClineMessage.Content.Text(text = currentText)),
                                     cost = totalCost,
                                     cacheDiscount = cacheDiscount,
-                                    timestamp = System.currentTimeMillis(),  // Update timestamp on final chunk
-                                    model = ClineSettings.getInstance(project).state.model
+                                    timestamp = System.currentTimeMillis(),
+                                    model = ClineSettings.getInstance(project).state.model,
+                                    toolCalls = toolCalls
                                 )
                                 messages[messages.size - 1] = updatedAssistantMessage
                                 

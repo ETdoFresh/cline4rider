@@ -23,14 +23,24 @@ class TaskProcessor(private val project: Project) {
         }
     }
 
-    fun processAssistantResponse(response: String): String? {
+    fun parseToolFromResponse(response: String): Tool? {
         return try {
             // Extract task content if present
             val taskContent = extractTaskContent(response)
             val contentToProcess = taskContent ?: response
 
             // Extract tool from the response
-            val tool = toolParser.parseToolFromResponse(contentToProcess) ?: return null
+            toolParser.parseToolFromResponse(contentToProcess)
+        } catch (e: Exception) {
+            logger.error("Failed to parse tool from response", e)
+            null
+        }
+    }
+
+    fun processAssistantResponse(response: String): String? {
+        return try {
+            // Parse tool from response
+            val tool = parseToolFromResponse(response) ?: return null
 
             // Execute the command
             val result = commandExecutor.executeCommand(tool)

@@ -32,6 +32,7 @@ import java.awt.Dialog
 import java.awt.Frame
 import java.awt.Window
 import com.etdofresh.cline4rider.persistence.ChatHistory
+import com.etdofresh.cline4rider.tasks.TaskProcessor
 import java.io.File
 
 class ClineToolWindow(private val project: Project, private val toolWindow: ToolWindow) {
@@ -966,6 +967,8 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         }
     }
 
+    private val taskProcessor = TaskProcessor(project)
+
     private fun handleApprove() {
         val messages = viewModel.getMessages()
         val lastAssistantMessage = messages.lastOrNull { it.role == ClineMessage.Role.ASSISTANT }
@@ -974,10 +977,17 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             // Extract tool calls from the assistant's message
             val toolCalls = lastAssistantMessage.toolCalls
             if (toolCalls.isNotEmpty()) {
-                // Send the tool call output as a user message
-                val toolOutput = toolCalls.joinToString("\n\n") { it.output ?: "" }
-                if (toolOutput.isNotEmpty()) {
-                    sendMessage(listOf(ClineMessage.Content.Text(text = toolOutput)))
+                // Process each tool call
+                toolCalls.forEach { toolCall ->
+                    // Parse and execute the tool
+                    val tool = taskProcessor.parseToolFromResponse(toolCall.arguments)
+                    if (tool != null) {
+                        val result = taskProcessor.processAssistantResponse(toolCall.arguments)
+                        if (result != null) {
+                            // Send the tool output as a user message
+                            sendMessage(listOf(ClineMessage.Content.Text(text = result)))
+                        }
+                    }
                 }
             }
         }
