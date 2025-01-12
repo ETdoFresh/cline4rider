@@ -39,8 +39,49 @@ class TaskProcessor(private val project: Project) {
 
     fun processAssistantResponse(response: String): String? {
         return try {
-            // Parse tool from response
-            val tool = parseToolFromResponse(response) ?: return null
+            // Check if the response contains any XML-like tool usage
+            if (!containsToolUsage(response)) {
+                return """[ERROR] You did not use a tool in your previous response! Please retry with a tool use.
+
+# Reminder: Instructions for Tool Use
+
+Tool uses are formatted using XML-style tags. The tool name is enclosed in opening and closing tags, and each parameter is similarly enclosed within its own set of tags. Here's the structure:
+
+<tool_name>
+<parameter1_name>value1</parameter1_name>
+<parameter2_name>value2</parameter2_name>
+...
+</tool_name>
+
+For example:
+
+<attempt_completion>
+<result>
+I have completed the task...
+</result>
+</attempt_completion>
+
+Always adhere to this format for all tool uses to ensure proper parsing and execution.
+
+# Next Steps
+
+If you have completed the user's task, use the attempt_completion tool. 
+If you require additional information from the user, use the ask_followup_question tool. 
+Otherwise, if you have not completed the task and do not need additional information, then proceed with the next step of the task. 
+(This is an automated message, so do not respond to it conversationally.)"""
+            }
+
+            // Now try to parse the tool
+            val tool = parseToolFromResponse(response)
+            if (tool == null) {
+                return "Failed to parse tool from response. Please check the XML format and try again."
+            }
+
+            // Check for required parameters based on tool type
+            val missingParam = checkMissingRequiredParams(tool)
+            if (missingParam != null) {
+                return "Missing value for required parameter '${missingParam}'. Please retry with complete response."
+            }
 
             // Execute the command
             val result = commandExecutor.executeCommand(tool)
@@ -51,6 +92,75 @@ class TaskProcessor(private val project: Project) {
         } catch (e: Exception) {
             logger.error("Failed to process assistant response", e)
             null
+        }
+    }
+
+    private fun containsToolUsage(response: String): Boolean {
+        val toolTags = listOf(
+            "execute_command",
+            "read_file",
+            "write_to_file",
+            "replace_in_file",
+            "search_files",
+            "list_files",
+            "list_code_definition_names",
+            "ask_followup_question",
+            "attempt_completion"
+        )
+
+        // Simple check for <tool_name> pattern
+        return toolTags.any { tag ->
+            response.contains("<$tag>") && response.contains("</$tag>")
+        }
+    }
+
+    private fun checkMissingRequiredParams(tool: Tool): String? {
+        return when (tool.name) {
+            "read_file", "write_to_file", "replace_in_file", "list_files", "search_files", "list_code_definition_names" -> {
+                if (!tool.parameters.containsKey("path")) return "path"
+                null
+            }
+            "write_to_file" -> {
+                if (!tool.parameters.containsKey("content")) return "content"
+                null
+            }
+            "replace_in_file" -> {
+                if (!tool.parameters.containsKey("diff")) return "diff"
+                null
+            }
+            "search_files" -> {
+                if (!tool.parameters.containsKey("regex")) return "regex"
+                null
+            }
+            "execute_command" -> {
+                if (!tool.parameters.containsKey("command")) return "command"
+                if (!tool.parameters.containsKey("requires_approval")) return "requires_approval"
+                null
+            }
+            "attempt_completion" -> {
+                if (!tool.parameters.containsKey("result")) return "result"
+                null
+            }
+            "ask_followup_question" -> {
+                if (!tool.parameters.containsKey("question")) return "question"
+                null
+            }
+            "use_mcp_tool" -> {
+                when {
+                    !tool.parameters.containsKey("server_name") -> "server_name"
+                    !tool.parameters.containsKey("tool_name") -> "tool_name"
+                    !tool.parameters.containsKey("arguments") -> "arguments"
+                    else -> null
+                }
+            }
+            "access_mcp_resource" -> {
+                when {
+                    !tool.parameters.containsKey("server_name") -> "server_name"
+                    !tool.parameters.containsKey("uri") -> "uri"
+                    else -> null
+                }
+            }
+            else -> "Invalid tool name: ${tool.name}"
         }
     }
 

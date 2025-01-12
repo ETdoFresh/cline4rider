@@ -30,6 +30,14 @@ class ToolParser {
                 val node = childNodes.item(i)
                 if (node.nodeType == Node.ELEMENT_NODE) {
                     val element = node as Element
+                    // For diff parameter, get the original content from the response
+                    if (element.tagName == "diff" && toolName == "replace_in_file") {
+                        val diffContent = extractDiffContent(response)
+                        if (diffContent != null) {
+                            params[element.tagName] = diffContent
+                            continue
+                        }
+                    }
                     params[element.tagName] = element.textContent.trim()
                 }
             }
@@ -39,6 +47,17 @@ class ToolParser {
             logger.error("Failed to parse tool from response", e)
             return null
         }
+    }
+
+    private fun extractDiffContent(response: String): String? {
+        val diffStartTag = "<diff>"
+        val diffEndTag = "</diff>"
+        val startIndex = response.indexOf(diffStartTag)
+        val endIndex = response.indexOf(diffEndTag)
+        if (startIndex != -1 && endIndex != -1) {
+            return response.substring(startIndex + diffStartTag.length, endIndex).trim()
+        }
+        return null
     }
 
     fun extractToolXml(response: String): String? {
@@ -65,7 +84,18 @@ class ToolParser {
             if (startMatch != null && endMatch != null) {
                 val startIndex = startMatch.range.first
                 val endIndex = endMatch.range.last + 1
-                return response.substring(startIndex, endIndex)
+                val toolXml = response.substring(startIndex, endIndex)
+                
+                // For replace_in_file, handle diff content specially
+                if (tag == "replace_in_file") {
+                    val diffContent = extractDiffContent(toolXml)
+                    if (diffContent != null) {
+                        // Create a sanitized version for XML parsing
+                        return toolXml.replace(diffContent, "DIFF_CONTENT_PLACEHOLDER")
+                    }
+                }
+                
+                return toolXml
             }
         }
 
