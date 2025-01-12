@@ -212,8 +212,31 @@ class CommandExecutor(private val project: Project) {
         val requiresApproval = params["requires_approval"]?.toBoolean() ?: true
 
         return try {
-            // TODO: Implement command execution logic
-            CommandResult(true, "Command executed: $command")
+            // Create process builder
+            val processBuilder = if (System.getProperty("os.name").lowercase().contains("windows")) {
+                ProcessBuilder("cmd.exe", "/c", command)
+            } else {
+                ProcessBuilder("sh", "-c", command)
+            }
+
+            // Set working directory
+            processBuilder.directory(project.basePath?.let { java.io.File(it) })
+
+            // Start process
+            val process = processBuilder.start()
+
+            // Capture output
+            val output = process.inputStream.bufferedReader().readText()
+            val error = process.errorStream.bufferedReader().readText()
+
+            // Wait for completion
+            val exitCode = process.waitFor()
+
+            if (exitCode == 0) {
+                CommandResult(true, if (output.isNotEmpty()) output else "Command executed successfully: $command")
+            } else {
+                CommandResult(false, if (error.isNotEmpty()) error else "Command failed with exit code $exitCode")
+            }
         } catch (e: Exception) {
             logger.error("Failed to execute command: $command", e)
             CommandResult(false, e.message)

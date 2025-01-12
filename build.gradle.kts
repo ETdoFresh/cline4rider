@@ -36,7 +36,8 @@ intellij {
 
   plugins.set(listOf(
     "com.intellij.platform.images", // Required for AllIcons
-    "com.intellij.java" // Required for Java-related icons
+    "com.intellij.java", // Required for Java-related icons
+    "terminal" // Required for terminal functionality
   ))
 }
 
