@@ -261,7 +261,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             override fun actionPerformed(e: java.awt.event.ActionEvent) {
                 val message = localInputArea.text.trim()
                 if (message.isNotEmpty() && !viewModel.isProcessing()) {
-                    sendMessage(message)
+                    sendMessage(listOf(ClineMessage.Content.Text(text = message)))
                     localInputArea.text = ""
                 }
             }
@@ -276,7 +276,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         localSendButton.addActionListener {
             val message = localInputArea.text.trim()
             if (message.isNotEmpty() && !viewModel.isProcessing()) {
-                sendMessage(message)
+                sendMessage(listOf(ClineMessage.Content.Text(text = message)))
                 localInputArea.text = ""
             }
         }
@@ -294,7 +294,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             override fun actionPerformed(e: java.awt.event.ActionEvent) {
                 val message = inputArea?.text?.trim()
                 if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
-                    sendMessage(message)
+                    sendMessage(listOf(ClineMessage.Content.Text(text = message)))
                     inputArea.text = ""
                 }
             }
@@ -308,7 +308,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         sendButton?.addActionListener {
             val message = inputArea?.text?.trim()
             if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
-                sendMessage(message)
+                sendMessage(listOf(ClineMessage.Content.Text(text = message)))
                 inputArea.text = ""
             }
         }
@@ -439,7 +439,9 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         
         // Message content
         if (firstUserMessage != null) {
-            val content = JTextArea(firstUserMessage.content).apply {
+            val contentText = firstUserMessage.content.filterIsInstance<ClineMessage.Content.Text>()
+                .joinToString("\n") { it.text }
+            val content = JTextArea(contentText).apply {
                 background = Color(60, 60, 60)
                 foreground = Color(220, 220, 220)
                 lineWrap = true
@@ -575,7 +577,9 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                         })
                     }
                     
-                    val content = JTextArea(firstUserMessage.content).apply {
+                    val contentText = firstUserMessage.content.filterIsInstance<ClineMessage.Content.Text>()
+                        .joinToString("\n") { it.text }
+                    val content = JTextArea(contentText).apply {
                         background = Color(51, 51, 51)
                         foreground = Color(220, 220, 220)
                         lineWrap = true
@@ -610,7 +614,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
                     viewModel.createNewTask()
                     conversationStats.updateStats(emptyList())
-                    sendMessage(message)
+                    sendMessage(listOf(ClineMessage.Content.Text(text = message)))
                     homeInputArea.text = ""
                 }
             }
@@ -626,7 +630,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
                 viewModel.createNewTask()
                 conversationStats.updateStats(emptyList())
-                sendMessage(message)
+                    sendMessage(listOf(ClineMessage.Content.Text(text = message)))
                 homeInputArea.text = ""
             }
         }
@@ -697,7 +701,9 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                         })
                     }
                     
-                    val content = JTextArea(firstUserMessage.content).apply {
+                    val contentText = firstUserMessage.content.filterIsInstance<ClineMessage.Content.Text>()
+                        .joinToString("\n") { it.text }
+                    val content = JTextArea(contentText).apply {
                         background = Color(51, 51, 51)
                         foreground = Color(220, 220, 220)
                         lineWrap = true
@@ -732,7 +738,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
                     viewModel.createNewTask()
                     conversationStats.updateStats(emptyList())
-                    sendMessage(message)
+                    sendMessage(listOf(ClineMessage.Content.Text(text = message)))
                     homeInputArea.text = ""
                 }
             }
@@ -748,7 +754,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 if (message != null && message.isNotEmpty() && !viewModel.isProcessing()) {
                     viewModel.createNewTask()
                     conversationStats.updateStats(emptyList())
-                    sendMessage(message)
+                    sendMessage(listOf(ClineMessage.Content.Text(text = message)))
                     homeInputArea.text = ""
                 }
         }
@@ -865,7 +871,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         sendButton.addActionListener {
             val message = inputArea.text.trim()
             if (message.isNotEmpty()) {
-                sendMessage(message)
+                sendMessage(listOf(ClineMessage.Content.Text(text = message)))
                 inputArea.text = ""
             }
         }
@@ -874,7 +880,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         refreshMessages()
     }
 
-    private fun sendMessage(content: String) {
+    private fun sendMessage(content: List<ClineMessage.Content>) {
         if (viewModel.isProcessing()) {
             JOptionPane.showMessageDialog(
                 contentPanel,
@@ -1035,16 +1041,29 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             }
         }
 
-        if (message.content.isNotEmpty()) {
-            val contentArea = JTextArea(message.content).apply {
-                background = Color(51, 51, 51)
-                foreground = Color(220, 220, 220)
-                lineWrap = true
-                wrapStyleWord = true
-                isEditable = false
-                border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+        message.content.forEach { content ->
+            when (content) {
+                is ClineMessage.Content.Text -> {
+                    val contentArea = JTextArea(content.text).apply {
+                        background = Color(51, 51, 51)
+                        foreground = Color(220, 220, 220)
+                        lineWrap = true
+                        wrapStyleWord = true
+                        isEditable = false
+                        border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                    }
+                    contentPanel.add(contentArea)
+                }
+                is ClineMessage.Content.ImageUrl -> {
+                    // TODO: Implement image display
+                    val imageLabel = JLabel("Image: ${content.imageUrl.url}").apply {
+                        foreground = Color(220, 220, 220)
+                        border = BorderFactory.createEmptyBorder(5, 5, 5, 5)
+                    }
+                    contentPanel.add(imageLabel)
+                }
             }
-            contentPanel.add(contentArea)
+            contentPanel.add(Box.createVerticalStrut(5))
         }
 
         message.toolCalls.forEach { toolCall ->

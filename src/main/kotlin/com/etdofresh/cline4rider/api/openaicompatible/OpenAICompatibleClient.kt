@@ -23,9 +23,12 @@ class OpenAICompatibleClient(private val baseUrl: String) {
 
     fun sendMessage(message: ClineMessage): String {
         try {
+            val textContent = message.content.filterIsInstance<ClineMessage.Content.Text>()
+                .joinToString("\n") { it.text }
+            
             val request = ChatCompletionRequest(
                 model = "gpt-3.5-turbo",
-                messages = listOf(Message("user", message.content)),
+                messages = listOf(Message("user", textContent)),
                 temperature = 0.7
             )
 

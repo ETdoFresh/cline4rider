@@ -30,7 +30,8 @@ class ClineSettings(private val project: Project) : PersistentStateComponent<Cli
         var provider: Provider = Provider.OPENAI,
         var model: String = "gpt-3.5-turbo",
         var temperature: Double = 0.7,
-        var maxTokens: Int = 2048
+        var maxTokens: Int = 2048,
+        var openRouterBaseUrl: String = "https://openrouter.ai/api/v1"
     )
 
     override fun getState(): State = myState

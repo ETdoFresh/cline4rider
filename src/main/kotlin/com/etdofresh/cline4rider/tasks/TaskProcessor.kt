@@ -24,7 +24,7 @@ class TaskProcessor(private val project: Project) {
     fun addUserMessage(content: String) {
         messages.add(ClineMessage(
             role = ClineMessage.Role.USER,
-            content = content,
+            content = listOf(ClineMessage.Content.Text(text = content)),
             timestamp = System.currentTimeMillis()
         ))
     }
@@ -32,7 +32,7 @@ class TaskProcessor(private val project: Project) {
     fun addAssistantMessage(content: String) {
         messages.add(ClineMessage(
             role = ClineMessage.Role.ASSISTANT,
-            content = content,
+            content = listOf(ClineMessage.Content.Text(text = content)),
             timestamp = System.currentTimeMillis()
         ))
     }
@@ -40,7 +40,7 @@ class TaskProcessor(private val project: Project) {
     fun addSystemMessage(content: String) {
         messages.add(ClineMessage(
             role = ClineMessage.Role.SYSTEM,
-            content = content,
+            content = listOf(ClineMessage.Content.Text(text = content)),
             timestamp = System.currentTimeMillis()
         ))
     }

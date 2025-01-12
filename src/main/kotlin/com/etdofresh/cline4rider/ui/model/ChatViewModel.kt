@@ -125,7 +125,7 @@ class ChatViewModel(private val project: Project) {
         return ClineSettings.getInstance(project).getApiKey()
     }
 
-    fun sendMessage(content: String) {
+    fun sendMessage(content: List<ClineMessage.Content>) {
         // Add the user message to the list
         addMessage(ClineMessage(
             role = ClineMessage.Role.USER,
@@ -136,7 +136,7 @@ class ChatViewModel(private val project: Project) {
                 // Create an assistant message placeholder with current timestamp
                 val assistantMessage = ClineMessage(
                     role = ClineMessage.Role.ASSISTANT,
-                    content = "",
+            content = emptyList(),
                     timestamp = System.currentTimeMillis()
                 )
         addMessage(assistantMessage)
@@ -150,7 +150,7 @@ class ChatViewModel(private val project: Project) {
         if (combinedPrompt.isNotEmpty()) {
             messagesToSend.add(ClineMessage(
                 role = ClineMessage.Role.SYSTEM,
-                content = combinedPrompt,
+            content = listOf(ClineMessage.Content.Text(text = combinedPrompt)),
                 timestamp = System.currentTimeMillis()
             ))
         }
@@ -192,7 +192,7 @@ class ChatViewModel(private val project: Project) {
                         ApplicationManager.getApplication().invokeLater {
                             try {
                                 val updatedAssistantMessage = messages.last().copy(
-                                    content = currentContent.toString(),
+                                    content = listOf(ClineMessage.Content.Text(text = currentContent.toString())),
                                     cost = totalCost,
                                     cacheDiscount = cacheDiscount,
                                     timestamp = System.currentTimeMillis()  // Update timestamp on final chunk

@@ -126,7 +126,8 @@ class ConversationStats : JPanel(BorderLayout()) {
         
         // Update initial request
         if (firstUserMessage != null) {
-            fullText = firstUserMessage.content
+            fullText = firstUserMessage.content.filterIsInstance<ClineMessage.Content.Text>()
+                .joinToString("\n") { it.text }
             updateRequestText()
         }
         
@@ -152,9 +153,11 @@ class ConversationStats : JPanel(BorderLayout()) {
 
         // Calculate prompt and completion tokens
         val promptTokens = messages.filter { it.role == ClineMessage.Role.USER }
-            .sumOf { it.tokens ?: (it.content.length / 4) }
+            .sumOf { msg -> msg.tokens ?: (msg.content.filterIsInstance<ClineMessage.Content.Text>()
+                .sumOf { it.text.length } / 4) }
         val completionTokens = messages.filter { it.role == ClineMessage.Role.ASSISTANT }
-            .sumOf { it.tokens ?: (it.content.length / 4) }
+            .sumOf { msg -> msg.tokens ?: (msg.content.filterIsInstance<ClineMessage.Content.Text>()
+                .sumOf { it.text.length } / 4) }
         
         // Calculate cached tokens and costs
         val cachedTokens = messages.sumOf { it.cachedTokens ?: 0 }

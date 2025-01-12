@@ -16,12 +16,14 @@ class ClineSettingsConfigurable(private val project: Project) : Configurable {
     private lateinit var modelField: JBTextField
     private lateinit var temperatureField: JBTextField
     private lateinit var maxTokensField: JBTextField
+    private lateinit var openRouterBaseUrlField: JBTextField
+    private lateinit var openRouterBaseUrlLabel: JBLabel
 
     override fun createComponent(): JComponent {
         val panel = JPanel()
         panel.layout = FormLayout(
             "right:pref, 4dlu, fill:pref:grow",
-            "pref, 4dlu, pref, 4dlu, pref, 4dlu, pref, 4dlu, pref"
+            "pref, 4dlu, pref, 4dlu, pref, 4dlu, pref, 4dlu, pref, 4dlu, pref"
         )
         
         val cc = CellConstraints()
@@ -60,6 +62,24 @@ class ClineSettingsConfigurable(private val project: Project) : Configurable {
             emptyText.text = "2048"
         }
         panel.add(maxTokensField, cc.xy(3, 9))
+
+        // OpenRouter Base URL
+        openRouterBaseUrlLabel = JBLabel("OpenRouter Base URL:").apply {
+            isVisible = false
+        }
+        panel.add(openRouterBaseUrlLabel, cc.xy(1, 11))
+        openRouterBaseUrlField = JBTextField().apply {
+            emptyText.text = "https://openrouter.ai/api/v1"
+            isVisible = false
+        }
+        panel.add(openRouterBaseUrlField, cc.xy(3, 11))
+
+        // Add provider change listener
+        providerField.addActionListener {
+            val isOpenRouter = providerField.selectedItem == ClineSettings.Provider.OPENROUTER
+            openRouterBaseUrlLabel.isVisible = isOpenRouter
+            openRouterBaseUrlField.isVisible = isOpenRouter
+        }
         
         return panel
     }
@@ -74,7 +94,9 @@ class ClineSettingsConfigurable(private val project: Project) : Configurable {
                     providerField.selectedItem != settings.state.provider ||
                     modelField.text != settings.state.model ||
                     temperatureField.text != settings.state.temperature.toString() ||
-                    maxTokensField.text != settings.state.maxTokens.toString()
+                    maxTokensField.text != settings.state.maxTokens.toString() ||
+                    (providerField.selectedItem == ClineSettings.Provider.OPENROUTER &&
+                            openRouterBaseUrlField.text != settings.state.openRouterBaseUrl)
         } catch (e: Exception) {
             // If there's an error accessing the API key, consider the form modified
             true
@@ -97,6 +119,10 @@ class ClineSettingsConfigurable(private val project: Project) : Configurable {
         settings.state.model = modelField.text
         settings.state.temperature = temperatureField.text.toDoubleOrNull() ?: 0.7
         settings.state.maxTokens = maxTokensField.text.toIntOrNull() ?: 2048
+        if (settings.state.provider == ClineSettings.Provider.OPENROUTER) {
+            settings.state.openRouterBaseUrl = openRouterBaseUrlField.text.takeIf { it.isNotEmpty() }
+                ?: "https://openrouter.ai/api/v1"
+        }
     }
 
     override fun reset() {
@@ -115,6 +141,12 @@ class ClineSettingsConfigurable(private val project: Project) : Configurable {
         modelField.text = settings.state.model
         temperatureField.text = settings.state.temperature.toString()
         maxTokensField.text = settings.state.maxTokens.toString()
+        openRouterBaseUrlField.text = settings.state.openRouterBaseUrl
+        
+        // Update visibility
+        val isOpenRouter = settings.state.provider == ClineSettings.Provider.OPENROUTER
+        openRouterBaseUrlLabel.isVisible = isOpenRouter
+        openRouterBaseUrlField.isVisible = isOpenRouter
     }
 
     override fun getDisplayName() = "Cline4Rider"

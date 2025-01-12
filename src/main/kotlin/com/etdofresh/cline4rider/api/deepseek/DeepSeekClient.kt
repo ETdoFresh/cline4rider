@@ -24,9 +24,12 @@ class DeepSeekClient {
 
     fun sendMessage(message: ClineMessage): String {
         try {
+            val textContent = message.content.filterIsInstance<ClineMessage.Content.Text>()
+                .joinToString("\n") { it.text }
+            
             val request = ChatCompletionRequest(
                 model = "deepseek-chat",
-                messages = listOf(Message("user", message.content)),
+                messages = listOf(Message("user", textContent)),
                 temperature = 0.7
             )
 

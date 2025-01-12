@@ -28,7 +28,8 @@ class OpenRouterClient(private val settings: ClineSettings) {
     private val client = OkHttpClient.Builder()
         .readTimeout(60, TimeUnit.SECONDS)
         .build()
-    private val baseUrl = "https://openrouter.ai/api/v1"
+    private val baseUrl: String
+        get() = settings.state.openRouterBaseUrl
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
     private fun fetchGenerationStats(id: String, apiKey: String): ResponseStats? {
@@ -81,24 +82,30 @@ class OpenRouterClient(private val settings: ClineSettings) {
         }
         
         messages.forEach { message ->
-            if (message.content.isBlank()) {
-                throw OpenRouterException("Message content cannot be blank")
+            if (message.content.isEmpty()) {
+                throw OpenRouterException("Message content cannot be empty")
+            }
+            // Check if any text content is blank
+            if (message.content.filterIsInstance<ClineMessage.Content.Text>().all { it.text.isBlank() }) {
+                throw OpenRouterException("Message text content cannot be blank")
             }
         }
 
         try {
             val request = ChatCompletionRequest(
                 model = settings.state.model ?: "openai/gpt-3.5-turbo",
-                messages = messages.map { 
+                messages = messages.map { msg ->
+                    val textContent = msg.content.filterIsInstance<ClineMessage.Content.Text>()
+                        .joinToString("\n") { it.text }
                     Message(
-                        role = when (it.role) {
+                        role = when (msg.role) {
                             ClineMessage.Role.USER -> "user"
                             ClineMessage.Role.ASSISTANT -> "assistant"
                             ClineMessage.Role.SYSTEM -> "system"
                             else -> "user"
                         },
-                        content = it.content,
-                        cache_control = if (it.content.length > 1024) CacheControl() else null
+                        content = textContent,
+                        cache_control = if (textContent.length > 1024) CacheControl() else null
                     )
                 },
                 temperature = settings.state.temperature ?: 0.7,

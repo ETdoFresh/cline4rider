@@ -65,12 +65,13 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
                 // For non-assistant messages or if last message isn't from assistant, add as new
                 else -> {
                     // Only add if it's not a duplicate (check role and content)
-                    val isDuplicate = conversation.messages.any { 
-                        it.role == message.role.toString() && it.content == message.content 
+                    val isDuplicate = conversation.messages.any { msg -> 
+                        msg.role == message.role.toString() && 
+                        msg.content.filterIsInstance<SerializableContent.Text>().map { it.text } == 
+                        message.content.filterIsInstance<ClineMessage.Content.Text>().map { it.text }
                     }
                     if (!isDuplicate) {
                         conversation.messages.add(SerializableMessage.fromClineMessage(message))
-                    } else {
                     }
                 }
             }
@@ -86,7 +87,6 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
     }
 
     override fun loadState(state: ChatHistory) {
-        
         // Clear existing conversations
         conversations.clear()
         
@@ -96,7 +96,6 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         
         // Sort conversations after loading
         conversations.sortByDescending { it.timestamp }
-        
     }
 
     fun saveState() {
@@ -145,14 +144,13 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         }
     }
 
-
     @Tag("message")
     class SerializableMessage {
         @get:Attribute
         var role: String = ""
         
-        @get:Attribute
-        var content: String = ""
+        @get:XCollection(style = XCollection.Style.v2)
+        var content: MutableList<SerializableContent> = mutableListOf()
         
         @get:Attribute
         var timestamp: Long = 0
@@ -170,7 +168,19 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
             fun fromClineMessage(message: ClineMessage): SerializableMessage {
                 return SerializableMessage().apply {
                     role = message.role.toString()
-                    content = message.content
+                    content = message.content.map { content ->
+                        when (content) {
+                            is ClineMessage.Content.Text -> SerializableContent.Text(
+                                text = content.text,
+                                type = content.type,
+                                cacheControl = content.cacheControl?.let { SerializableContent.CacheControl(it.type) }
+                            )
+                            is ClineMessage.Content.ImageUrl -> SerializableContent.ImageUrl(
+                                imageUrl = SerializableContent.ImageUrlData(content.imageUrl.url),
+                                type = content.type
+                            )
+                        }
+                    }.toMutableList()
                     timestamp = message.timestamp
                     toolCalls = message.toolCalls.map { 
                         SerializableToolCall.fromToolCall(it) 
@@ -184,7 +194,19 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         fun toClineMessage(): ClineMessage {
             return ClineMessage(
                 role = ClineMessage.Role.valueOf(role.uppercase()),
-                content = content,
+                content = content.map { content ->
+                    when (content) {
+                        is SerializableContent.Text -> ClineMessage.Content.Text(
+                            text = content.text,
+                            type = content.type,
+                            cacheControl = content.cacheControl?.let { ClineMessage.CacheControl(it.type) }
+                        )
+                        is SerializableContent.ImageUrl -> ClineMessage.Content.ImageUrl(
+                            imageUrl = ClineMessage.ImageUrlData(content.imageUrl.url),
+                            type = content.type
+                        )
+                    }
+                },
                 timestamp = timestamp,
                 toolCalls = toolCalls.map { it.toToolCall() },
                 cost = cost,
@@ -226,5 +248,41 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
                 )
             }
         }
+    }
+
+    @Tag("content")
+    sealed class SerializableContent {
+        @Tag("text")
+        class Text(
+            @get:Attribute
+            var text: String = "",
+            
+            @get:Attribute
+            var type: String = "text",
+            
+            @get:Attribute
+            var cacheControl: CacheControl? = null
+        ) : SerializableContent()
+
+        @Tag("imageUrl")
+        class ImageUrl(
+            @get:Attribute
+            var imageUrl: ImageUrlData = ImageUrlData(),
+            
+            @get:Attribute
+            var type: String = "image_url"
+        ) : SerializableContent()
+
+        @Tag("imageUrlData")
+        class ImageUrlData(
+            @get:Attribute
+            var url: String = ""
+        )
+
+        @Tag("cacheControl")
+        class CacheControl(
+            @get:Attribute
+            var type: String = ""
+        )
     }
 }
