@@ -143,7 +143,7 @@ Otherwise, if you have not completed the task and do not need additional informa
         return patterns.any { it.containsMatchIn(response) }
     }
 
-    private fun containsToolUsage(response: String): Boolean {
+    fun containsToolUsage(response: String): Boolean {
         val toolTags = listOf(
             "execute_command",
             "read_file",
