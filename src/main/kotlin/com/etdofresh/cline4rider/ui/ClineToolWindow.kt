@@ -1073,7 +1073,8 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                     // If no tool usage, send an error message back
                     val errorMessage = taskProcessor.processAssistantResponse(rawText)
                     if (errorMessage != null) {
-                        sendMessage(listOf(ClineMessage.Content.Text(text = errorMessage)))
+                        // Wrap error message in task tags to prevent empty content error
+                        sendMessage(listOf(ClineMessage.Content.Text(text = "<task>$errorMessage</task>")))
                     }
                     actionButtonsPanel.isVisible = false
                     proceedTimer?.stop()
@@ -1084,11 +1085,13 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                         when (content) {
                             is ClineMessage.Content.Text -> {
                                 val text = content.text
-                                (text.contains("<execute_command>") || 
-                                text.contains("<browser_action>") ||
-                                text.contains("<write_to_file>") ||
-                                text.contains("<replace_in_file>")) &&
-                                !text.contains("<attempt_completion>")
+                                // Use the same regex patterns as TaskProcessor for consistency
+                                val validTools = listOf("execute_command", "browser_action", "write_to_file", "replace_in_file")
+                                validTools.any { tool ->
+                                    val openTagPattern = """<\s*$tool\s*>""".toRegex()
+                                    val closeTagPattern = """</\s*$tool\s*>""".toRegex()
+                                    openTagPattern.containsMatchIn(text) && closeTagPattern.containsMatchIn(text)
+                                } && !text.contains("<attempt_completion>")
                             }
                             else -> false
                         }
