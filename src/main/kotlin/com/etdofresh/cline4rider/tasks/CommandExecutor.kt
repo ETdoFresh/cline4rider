@@ -63,7 +63,9 @@ class CommandExecutor(private val project: Project) {
 
     fun isProcessRunning(): Boolean {
         return currentProcessHandler?.let { handler ->
-            !handler.isProcessTerminated && handler.process?.isAlive == true
+            val isAlive = !handler.isProcessTerminated && handler.process?.isAlive == true
+            val hasOutput = getCurrentOutput().isNotEmpty()
+            isAlive || hasOutput
         } ?: false
     }
 

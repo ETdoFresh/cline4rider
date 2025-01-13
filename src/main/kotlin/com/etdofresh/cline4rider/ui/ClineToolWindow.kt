@@ -160,7 +160,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 add(Box.createVerticalStrut(5))
                 add(proceedPanel)
 
-                // Start timer to show proceed button after 1 second
+                // Initialize timer but don't start it yet
                 proceedTimer = Timer(1000) {
                     proceedPanel.isVisible = true
                     proceedPanel.revalidate()
@@ -1010,6 +1010,39 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 val result = taskProcessor.processAssistantResponse(rawText)
                 if (result != null) {
                     sendMessage(listOf(ClineMessage.Content.Text(text = result)))
+                    
+                    // Start timer to show proceed button after command execution
+                    if (taskProcessor.getCurrentCommandOutput() != null) {
+                        // Show action buttons panel with just the proceed button
+                        actionButtonsPanel.isVisible = true
+                        
+                        // Hide approve/deny buttons
+                        (actionButtonsPanel.components.firstOrNull() as? JPanel)?.let { buttonsPanel ->
+                            buttonsPanel.isVisible = false
+                        }
+                        
+                        // Get proceed panel and ensure it starts hidden
+                        (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
+                            proceedPanel.isVisible = false
+                        }
+                        
+                        // Reset and start timer to show proceed button after 1 second
+                        proceedTimer?.stop()
+                        proceedTimer = null
+                        proceedTimer = Timer(1000) {
+                            SwingUtilities.invokeLater {
+                                (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
+                                    proceedPanel.isVisible = true
+                                    proceedPanel.revalidate()
+                                    proceedPanel.repaint()
+                                }
+                                (it.source as Timer).stop()
+                            }
+                        }.apply {
+                            isRepeats = false
+                            start()
+                        }
+                    }
                 }
             }
             
@@ -1029,6 +1062,39 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                         if (result != null) {
                             // Send the tool output as a user message
                             sendMessage(listOf(ClineMessage.Content.Text(text = result)))
+                            
+                            // Start timer to show proceed button after command execution
+                            if (taskProcessor.getCurrentCommandOutput() != null) {
+                                // Show action buttons panel with just the proceed button
+                                actionButtonsPanel.isVisible = true
+                                
+                                // Hide approve/deny buttons
+                                (actionButtonsPanel.components.firstOrNull() as? JPanel)?.let { buttonsPanel ->
+                                    buttonsPanel.isVisible = false
+                                }
+                                
+                                // Get proceed panel and ensure it starts hidden
+                                (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
+                                    proceedPanel.isVisible = false
+                                }
+                                
+                                // Reset and start timer to show proceed button after 1 second
+                                proceedTimer?.stop()
+                                proceedTimer = null
+                                proceedTimer = Timer(1000) {
+                                    SwingUtilities.invokeLater {
+                                        (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
+                                            proceedPanel.isVisible = true
+                                            proceedPanel.revalidate()
+                                            proceedPanel.repaint()
+                                        }
+                                        (it.source as Timer).stop()
+                                    }
+                                }.apply {
+                                    isRepeats = false
+                                    start()
+                                }
+                            }
                         }
                     }
                 }
@@ -1076,22 +1142,18 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 val rawText = lastMessage.content.filterIsInstance<ClineMessage.Content.Text>().joinToString("\n") { it.text }
                 
                 if (!viewModel.isProcessing()) {
-                    // Check if there's a running process
-                    val isProcessRunning = taskProcessor.getCurrentCommandOutput() != null
-                    
-                    if (isProcessRunning) {
-                        // Show action buttons with "Proceed while running" immediately
-                        actionButtonsPanel.isVisible = true
-                        (actionButtonsPanel.components.firstOrNull() as? JPanel)?.let { buttonsPanel ->
-                            // Hide approve/deny buttons
-                            buttonsPanel.isVisible = false
-                        }
-                        (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
-                            // Show proceed button immediately
-                            proceedPanel.isVisible = true
+                    // First check if there's any tool usage
+                    if (!taskProcessor.containsToolUsage(rawText)) {
+                        // Send error message if no tool usage is found
+                        val errorMessage = taskProcessor.processAssistantResponse(rawText)
+                        if (errorMessage != null) {
+                            // Wrap error message in task tags to prevent empty content error
+                            sendMessage(listOf(ClineMessage.Content.Text(text = "<task>$errorMessage</task>")))
                         }
                     } else {
-                        // Only check for tools and errors after streaming is complete
+                        // Check if there's a running process
+                        val isProcessRunning = taskProcessor.getCurrentCommandOutput() != null
+                        
                         // Check for valid tool calls but exclude attempt_completion
                         val hasValidToolInContent = lastMessage.content.any { content ->
                             when (content) {
@@ -1112,22 +1174,34 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                         val hasValidToolCall = lastMessage.toolCalls.any { toolCall ->
                             toolCall.name != "attempt_completion"
                         }
-                        
-                        if (hasValidToolInContent || hasValidToolCall) {
+
+                        if (isProcessRunning) {
+                            // Show action buttons panel with just the proceed button
                             actionButtonsPanel.isVisible = true
-                            // Start the timer for "Proceed while running" button
-                            proceedTimer?.start()
-                        } else {
-                            // Only send error message if no tool usage is found in complete response
-                            if (!taskProcessor.containsToolUsage(rawText)) {
-                                val errorMessage = taskProcessor.processAssistantResponse(rawText)
-                                if (errorMessage != null) {
-                                    // Wrap error message in task tags to prevent empty content error
-                                    sendMessage(listOf(ClineMessage.Content.Text(text = "<task>$errorMessage</task>")))
-                                }
+                            
+                            // Hide approve/deny buttons
+                            (actionButtonsPanel.components.firstOrNull() as? JPanel)?.let { buttonsPanel ->
+                                buttonsPanel.isVisible = false
+                            }
+                            
+                            // Get proceed panel and ensure it starts hidden
+                            (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
+                                proceedPanel.isVisible = false
+                            }
+                        } else if (hasValidToolInContent || hasValidToolCall) {
+                            // Show action buttons panel with approve/deny buttons
+                            actionButtonsPanel.isVisible = true
+                            
+                            // Show approve/deny buttons
+                            (actionButtonsPanel.components.firstOrNull() as? JPanel)?.let { buttonsPanel ->
+                                buttonsPanel.isVisible = true
+                            }
+                            
+                            // Hide proceed button
+                            (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
+                                proceedPanel.isVisible = false
                             }
                         }
-                        
                     }
                     
                 }
