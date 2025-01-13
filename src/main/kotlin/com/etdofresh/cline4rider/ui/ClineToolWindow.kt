@@ -1162,16 +1162,6 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                     return@invokeLater
                 }
 
-                // Check for running process
-                if (taskProcessor.getCurrentCommandOutput() != null) {
-                    // Running process, show proceed panel
-                    actionButtonsPanel.isVisible = true
-                    // Hide approve/deny buttons, show proceed panel
-                    (actionButtonsPanel.components.firstOrNull() as? JPanel)?.isVisible = false
-                    (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.isVisible = false
-                    return@invokeLater
-                }
-
                 // Parse tool from response
                 val tool = taskProcessor.parseToolFromResponse(rawText)
                 if (tool != null && tool.name != "attempt_completion") {
@@ -1305,8 +1295,33 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             }
         }
 
-        headerPanel.add(timestampLabel, BorderLayout.WEST)
-        headerPanel.add(roleLabel, BorderLayout.CENTER)
+        // Create delete button
+        val deleteButton = JButton(AllIcons.Actions.Cancel).apply {
+            background = Color(45, 45, 45)
+            border = BorderFactory.createEmptyBorder(2, 2, 2, 2)
+            toolTipText = "Delete message"
+            addActionListener {
+                val confirm = JOptionPane.showConfirmDialog(
+                    contentPanel,
+                    "Are you sure you want to delete this message?",
+                    "Confirm Delete",
+                    JOptionPane.YES_NO_OPTION
+                )
+                if (confirm == JOptionPane.YES_OPTION) {
+                    viewModel.deleteMessage(message.timestamp)
+                }
+            }
+        }
+
+        // Create header content panel to hold timestamp and role
+        val headerContentPanel = JPanel(BorderLayout()).apply {
+            background = Color(45, 45, 45)
+            add(timestampLabel, BorderLayout.WEST)
+            add(roleLabel, BorderLayout.CENTER)
+        }
+
+        headerPanel.add(headerContentPanel, BorderLayout.CENTER)
+        headerPanel.add(deleteButton, BorderLayout.EAST)
 
         val contentPanel = JPanel().apply {
             layout = BoxLayout(this, BoxLayout.Y_AXIS)

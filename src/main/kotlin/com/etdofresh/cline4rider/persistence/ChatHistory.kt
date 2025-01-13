@@ -153,6 +153,17 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
         }
     }
 
+    fun deleteMessage(conversationId: String, timestamp: Long) {
+        conversations.find { it.id == conversationId }?.let { conversation ->
+            conversation.messages.removeIf { it.timestamp == timestamp }
+            // If conversation is empty after deletion, remove it
+            if (conversation.messages.isEmpty()) {
+                deleteConversation(conversationId)
+            }
+            saveState()
+        }
+    }
+
     @Tag("message")
     class SerializableMessage {
         @get:Attribute

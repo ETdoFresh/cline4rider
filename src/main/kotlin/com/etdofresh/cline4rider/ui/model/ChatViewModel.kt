@@ -138,6 +138,18 @@ class ChatViewModel(private val project: Project) {
         notifyHistoryListeners()
     }
 
+    fun deleteMessage(timestamp: Long) {
+        currentConversationId?.let { conversationId ->
+            // Remove from current messages list
+            messages.removeIf { it.timestamp == timestamp }
+            // Remove from persistence
+            chatHistory.deleteMessage(conversationId, timestamp)
+            // Notify listeners
+            notifyMessageListeners()
+            notifyHistoryListeners()
+        }
+    }
+
     fun getApiKey(): String? {
         return ClineSettings.getInstance(project).getApiKey()
     }
