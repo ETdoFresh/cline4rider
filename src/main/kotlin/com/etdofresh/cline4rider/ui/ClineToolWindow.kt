@@ -71,6 +71,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         minimumSize = Dimension(JBUI.scale(300), JBUI.scale(100))
     }
     private lateinit var actionButtonsPanel: JPanel
+    private var proceedTimer: Timer? = null
     
     private val chatPanel = JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
@@ -103,30 +104,72 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     }
 
     init {
-        actionButtonsPanel = JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.X_AXIS)
-            background = Color(45, 45, 45)
-            isVisible = false
-            add(Box.createHorizontalGlue())
-            add(JButton("Approve").apply {
-                background = Color(40, 167, 69)
-                foreground = Color.WHITE
-                addActionListener {
-                    handleApprove()
-                    actionButtonsPanel.isVisible = false
+            actionButtonsPanel = JPanel().apply {
+                layout = BoxLayout(this, BoxLayout.Y_AXIS)
+                background = Color(45, 45, 45)
+                isVisible = false
+
+                // Main buttons panel
+                val buttonsPanel = JPanel().apply {
+                    layout = BoxLayout(this, BoxLayout.X_AXIS)
+                    background = Color(45, 45, 45)
+                    add(Box.createHorizontalGlue())
+                    add(JButton("Approve").apply {
+                        background = Color(40, 167, 69)
+                        foreground = Color.WHITE
+                        addActionListener {
+                            handleApprove()
+                            actionButtonsPanel.isVisible = false
+                            proceedTimer?.stop()
+                            proceedTimer = null
+                        }
+                    })
+                    add(Box.createHorizontalStrut(10))
+                    add(JButton("Deny").apply {
+                        background = Color(220, 53, 69)
+                        foreground = Color.WHITE
+                        addActionListener {
+                            handleDeny()
+                            actionButtonsPanel.isVisible = false
+                            proceedTimer?.stop()
+                            proceedTimer = null
+                        }
+                    })
+                    add(Box.createHorizontalGlue())
                 }
-            })
-            add(Box.createHorizontalStrut(10))
-            add(JButton("Deny").apply {
-                background = Color(220, 53, 69)
-                foreground = Color.WHITE
-                addActionListener {
-                    handleDeny()
-                    actionButtonsPanel.isVisible = false
+                add(buttonsPanel)
+
+                // Proceed while running button panel
+                val proceedPanel = JPanel().apply {
+                    layout = BoxLayout(this, BoxLayout.X_AXIS)
+                    background = Color(45, 45, 45)
+                    isVisible = false
+                    add(Box.createHorizontalGlue())
+                    add(JButton("Proceed while running").apply {
+                        background = Color(108, 117, 125)
+                        foreground = Color.WHITE
+                        addActionListener {
+                            handleProceedWhileRunning()
+                            actionButtonsPanel.isVisible = false
+                            proceedTimer?.stop()
+                            proceedTimer = null
+                        }
+                    })
+                    add(Box.createHorizontalGlue())
                 }
-            })
-            add(Box.createHorizontalGlue())
-        }
+                add(Box.createVerticalStrut(5))
+                add(proceedPanel)
+
+                // Start timer to show proceed button after 1 second
+                proceedTimer = Timer(1000) {
+                    proceedPanel.isVisible = true
+                    proceedPanel.revalidate()
+                    proceedPanel.repaint()
+                    (it.source as Timer).stop()
+                }.apply {
+                    isRepeats = false
+                }
+            }
         setupUI()
         setupListeners()
     }
@@ -960,6 +1003,10 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             // Try to parse tool directly from the message content
             val tool = taskProcessor.parseToolFromResponse(rawText)
             if (tool != null) {
+                // Lock chat interface
+                inputArea.isEnabled = false
+                sendButton.isEnabled = false
+                
                 val result = taskProcessor.processAssistantResponse(rawText)
                 if (result != null) {
                     sendMessage(listOf(ClineMessage.Content.Text(text = result)))
@@ -969,6 +1016,10 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             // Also try existing tool calls
             val toolCalls = lastAssistantMessage.toolCalls
             if (toolCalls.isNotEmpty()) {
+                // Lock chat interface
+                inputArea.isEnabled = false
+                sendButton.isEnabled = false
+                
                 // Process each tool call
                 toolCalls.forEach { toolCall ->
                     // Parse and execute the tool
@@ -983,6 +1034,12 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 }
             }
         }
+    }
+
+    private fun handleProceedWhileRunning() {
+        // Re-enable chat interface
+        inputArea.isEnabled = true
+        sendButton.isEnabled = true
     }
 
     private fun handleDeny() {
@@ -1006,9 +1063,27 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 addMessageToUI(message)
             }
 
-            // Show approve/deny buttons only if last message is from assistant and we're not processing
-            if (messages.lastOrNull()?.role == ClineMessage.Role.ASSISTANT && !viewModel.isProcessing()) {
-                actionButtonsPanel.isVisible = true
+            // Show approve/deny buttons for every command from assistant
+            val lastMessage = messages.lastOrNull()
+            if (lastMessage?.role == ClineMessage.Role.ASSISTANT) {
+                val hasCommand = lastMessage.content.any { content ->
+                    when (content) {
+                        is ClineMessage.Content.Text -> {
+                            val text = content.text
+                            text.contains("<execute_command>") || 
+                            text.contains("<browser_action>") ||
+                            text.contains("<write_to_file>") ||
+                            text.contains("<replace_in_file>")
+                        }
+                        else -> false
+                    }
+                }
+                
+                if (hasCommand && !viewModel.isProcessing()) {
+                    actionButtonsPanel.isVisible = true
+                    // Start the timer for "Proceed while running" button
+                    proceedTimer?.start()
+                }
             }
 
             // Batch UI updates
