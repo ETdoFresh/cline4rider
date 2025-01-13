@@ -156,9 +156,14 @@ Otherwise, if you have not completed the task and do not need additional informa
             "attempt_completion"
         )
 
-        // Simple check for <tool_name> pattern
+        // Check for tool_name pattern with flexible whitespace
         return toolTags.any { tag ->
-            response.contains("<$tag>") && response.contains("</$tag>")
+            // Match opening tag with optional whitespace
+            val openTagPattern = """<\s*$tag\s*>""".toRegex()
+            // Match closing tag with optional whitespace
+            val closeTagPattern = """</\s*$tag\s*>""".toRegex()
+            
+            openTagPattern.containsMatchIn(response) && closeTagPattern.containsMatchIn(response)
         }
     }
 
