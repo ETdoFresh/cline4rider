@@ -1063,36 +1063,53 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 addMessageToUI(message)
             }
 
-            // Show approve/deny buttons only when a valid tool call is present
+            // Process the last message for tool calls and validation
             val lastMessage = messages.lastOrNull()
             if (lastMessage?.role == ClineMessage.Role.ASSISTANT && !viewModel.isProcessing()) {
-                // Check for valid tool calls in both content and toolCalls
-                val hasValidToolInContent = lastMessage.content.any { content ->
-                    when (content) {
-                        is ClineMessage.Content.Text -> {
-                            val text = content.text
-                            // Check for valid tool calls but exclude attempt_completion
-                            (text.contains("<execute_command>") || 
-                            text.contains("<browser_action>") ||
-                            text.contains("<write_to_file>") ||
-                            text.contains("<replace_in_file>")) &&
-                            !text.contains("<attempt_completion>")
+                val rawText = lastMessage.content.filterIsInstance<ClineMessage.Content.Text>().joinToString("\n") { it.text }
+                
+                // Check if response contains any tool usage
+                if (!taskProcessor.containsToolUsage(rawText)) {
+                    // If no tool usage, send an error message back
+                    val errorMessage = taskProcessor.processAssistantResponse(rawText)
+                    if (errorMessage != null) {
+                        sendMessage(listOf(ClineMessage.Content.Text(text = errorMessage)))
+                    }
+                    actionButtonsPanel.isVisible = false
+                    proceedTimer?.stop()
+                    proceedTimer = null
+                } else {
+                    // Check for valid tool calls but exclude attempt_completion
+                    val hasValidToolInContent = lastMessage.content.any { content ->
+                        when (content) {
+                            is ClineMessage.Content.Text -> {
+                                val text = content.text
+                                (text.contains("<execute_command>") || 
+                                text.contains("<browser_action>") ||
+                                text.contains("<write_to_file>") ||
+                                text.contains("<replace_in_file>")) &&
+                                !text.contains("<attempt_completion>")
+                            }
+                            else -> false
                         }
-                        else -> false
+                    }
+                    
+                    val hasValidToolCall = lastMessage.toolCalls.any { toolCall ->
+                        toolCall.name != "attempt_completion"
+                    }
+                    
+                    if ((hasValidToolInContent || hasValidToolCall) && !viewModel.isProcessing()) {
+                        actionButtonsPanel.isVisible = true
+                        // Start the timer for "Proceed while running" button
+                        proceedTimer?.start()
+                    } else {
+                        actionButtonsPanel.isVisible = false
+                        proceedTimer?.stop()
+                        proceedTimer = null
                     }
                 }
-                
-                val hasValidToolCall = lastMessage.toolCalls.any { toolCall ->
-                    toolCall.name != "attempt_completion"
-                }
-                
-                if ((hasValidToolInContent || hasValidToolCall) && !viewModel.isProcessing()) {
-                    actionButtonsPanel.isVisible = true
-                    // Start the timer for "Proceed while running" button
-                    proceedTimer?.start()
-                }
             } else {
-                // Hide buttons if no valid tool call or processing
+                // Hide buttons if not an assistant message or if processing
                 actionButtonsPanel.isVisible = false
                 proceedTimer?.stop()
                 proceedTimer = null
