@@ -1037,6 +1037,13 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     }
 
     private fun handleProceedWhileRunning() {
+        // Get current command output
+        val output = taskProcessor.getCurrentCommandOutput()
+        if (output != null) {
+            // Send the current output as a message
+            sendMessage(listOf(ClineMessage.Content.Text(text = "<task>Command output so far:\n$output</task>")))
+        }
+        
         // Re-enable chat interface
         inputArea.isEnabled = true
         sendButton.isEnabled = true
@@ -1069,45 +1076,60 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 val rawText = lastMessage.content.filterIsInstance<ClineMessage.Content.Text>().joinToString("\n") { it.text }
                 
                 if (!viewModel.isProcessing()) {
-                    // Only check for tools and errors after streaming is complete
-                    // Check for valid tool calls but exclude attempt_completion
-                    val hasValidToolInContent = lastMessage.content.any { content ->
-                        when (content) {
-                            is ClineMessage.Content.Text -> {
-                                val text = content.text
-                                // Use the same regex patterns as TaskProcessor for consistency
-                                val validTools = listOf("execute_command", "browser_action", "write_to_file", "replace_in_file")
-                                validTools.any { tool ->
-                                    val openTagPattern = """<\s*$tool\s*>""".toRegex()
-                                    val closeTagPattern = """</\s*$tool\s*>""".toRegex()
-                                    openTagPattern.containsMatchIn(text) && closeTagPattern.containsMatchIn(text)
-                                } && !text.contains("<attempt_completion>")
-                            }
-                            else -> false
-                        }
-                    }
+                    // Check if there's a running process
+                    val isProcessRunning = taskProcessor.getCurrentCommandOutput() != null
                     
-                    val hasValidToolCall = lastMessage.toolCalls.any { toolCall ->
-                        toolCall.name != "attempt_completion"
-                    }
-                    
-                    if (hasValidToolInContent || hasValidToolCall) {
+                    if (isProcessRunning) {
+                        // Show action buttons with "Proceed while running" immediately
                         actionButtonsPanel.isVisible = true
-                        // Start the timer for "Proceed while running" button
-                        proceedTimer?.start()
+                        (actionButtonsPanel.components.firstOrNull() as? JPanel)?.let { buttonsPanel ->
+                            // Hide approve/deny buttons
+                            buttonsPanel.isVisible = false
+                        }
+                        (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
+                            // Show proceed button immediately
+                            proceedPanel.isVisible = true
+                        }
                     } else {
-                        // Only send error message if no tool usage is found in complete response
-                        if (!taskProcessor.containsToolUsage(rawText)) {
-                            val errorMessage = taskProcessor.processAssistantResponse(rawText)
-                            if (errorMessage != null) {
-                                // Wrap error message in task tags to prevent empty content error
-                                sendMessage(listOf(ClineMessage.Content.Text(text = "<task>$errorMessage</task>")))
+                        // Only check for tools and errors after streaming is complete
+                        // Check for valid tool calls but exclude attempt_completion
+                        val hasValidToolInContent = lastMessage.content.any { content ->
+                            when (content) {
+                                is ClineMessage.Content.Text -> {
+                                    val text = content.text
+                                    // Use the same regex patterns as TaskProcessor for consistency
+                                    val validTools = listOf("execute_command", "browser_action", "write_to_file", "replace_in_file")
+                                    validTools.any { tool ->
+                                        val openTagPattern = """<\s*$tool\s*>""".toRegex()
+                                        val closeTagPattern = """</\s*$tool\s*>""".toRegex()
+                                        openTagPattern.containsMatchIn(text) && closeTagPattern.containsMatchIn(text)
+                                    } && !text.contains("<attempt_completion>")
+                                }
+                                else -> false
                             }
                         }
-                        actionButtonsPanel.isVisible = false
-                        proceedTimer?.stop()
-                        proceedTimer = null
+                        
+                        val hasValidToolCall = lastMessage.toolCalls.any { toolCall ->
+                            toolCall.name != "attempt_completion"
+                        }
+                        
+                        if (hasValidToolInContent || hasValidToolCall) {
+                            actionButtonsPanel.isVisible = true
+                            // Start the timer for "Proceed while running" button
+                            proceedTimer?.start()
+                        } else {
+                            // Only send error message if no tool usage is found in complete response
+                            if (!taskProcessor.containsToolUsage(rawText)) {
+                                val errorMessage = taskProcessor.processAssistantResponse(rawText)
+                                if (errorMessage != null) {
+                                    // Wrap error message in task tags to prevent empty content error
+                                    sendMessage(listOf(ClineMessage.Content.Text(text = "<task>$errorMessage</task>")))
+                                }
+                            }
+                        }
+                        
                     }
+                    
                 }
             }
             

@@ -9,6 +9,14 @@ class TaskProcessor(private val project: Project) {
     private val toolParser = ToolParser()
     private val commandExecutor = CommandExecutor(project)
 
+    fun getCurrentCommandOutput(): String? {
+        return if (commandExecutor.isProcessRunning()) {
+            commandExecutor.getCurrentOutput()
+        } else {
+            null
+        }
+    }
+
     fun processAssistantResponse(response: ClineMessage): String? {
         return try {
             // Extract text content from the message
@@ -234,7 +242,12 @@ Otherwise, if you have not completed the task and do not need additional informa
         return null
     }
 
-    private fun formatToolResponse(toolName: String, params: Map<String, String>, result: CommandExecutor.CommandResult): String {
+    private fun formatToolResponse(toolName: String, params: Map<String, String>, result: CommandExecutor.CommandResult): String? {
+        // For execute_command, don't return a response if the process is still running
+        if (toolName == "execute_command" && commandExecutor.isProcessRunning()) {
+            return null
+        }
+
         val path = params["path"]
         val baseResponse = when (toolName) {
             "read_file" -> "[read_file for '$path'] Result:"

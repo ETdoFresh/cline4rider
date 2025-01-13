@@ -16,9 +16,13 @@ import com.intellij.execution.ui.RunContentManager
 import com.intellij.execution.executors.DefaultRunExecutor
 import com.intellij.openapi.actionSystem.DefaultActionGroup
 import javax.swing.JComponent
+import javax.swing.text.JTextComponent
+import java.awt.Component
 
 class CommandExecutor(private val project: Project) {
     private val logger = Logger.getInstance(CommandExecutor::class.java)
+    private var currentConsole: ConsoleView? = null
+    private var currentProcessHandler: OSProcessHandler? = null
 
     fun executeCommand(tool: Tool): CommandResult {
         return when (tool.name) {
@@ -33,6 +37,34 @@ class CommandExecutor(private val project: Project) {
             "ask_followup_question" -> handleAskFollowupQuestion(tool.parameters)
             else -> CommandResult(false, "Unsupported tool: ${tool.name}")
         }
+    }
+
+    fun getCurrentOutput(): String {
+        return currentConsole?.let { console ->
+            // Get text from console component
+            fun findTextComponent(component: Component): JTextComponent? {
+                if (component is JTextComponent) {
+                    return component
+                }
+                if (component is JComponent) {
+                    for (child in component.components) {
+                        val found = findTextComponent(child)
+                        if (found != null) {
+                            return found
+                        }
+                    }
+                }
+                return null
+            }
+            
+            findTextComponent(console.component)?.text ?: ""
+        } ?: ""
+    }
+
+    fun isProcessRunning(): Boolean {
+        return currentProcessHandler?.let { handler ->
+            !handler.isProcessTerminated && handler.process?.isAlive == true
+        } ?: false
     }
 
     private fun handleAttemptCompletion(params: Map<String, String>): CommandResult {
@@ -222,6 +254,10 @@ class CommandExecutor(private val project: Project) {
 
         return try {
             var success = false
+            // Clear previous console and process handler
+            currentConsole = null
+            currentProcessHandler = null
+            
             com.intellij.openapi.application.ApplicationManager.getApplication().invokeAndWait {
                 try {
                     // Get working directory
@@ -243,10 +279,12 @@ class CommandExecutor(private val project: Project) {
                     // Start process
                     val process = processBuilder.start()
                     val processHandler = OSProcessHandler(process, command)
+                    currentProcessHandler = processHandler
                     
-                    // Create console
+                    // Create and store console
                     val consoleBuilder = TextConsoleBuilderFactory.getInstance().createBuilder(project)
                     val console = consoleBuilder.console
+                    currentConsole = console
                     
                     // Create actions toolbar
                     val actions = DefaultActionGroup()
@@ -273,7 +311,6 @@ class CommandExecutor(private val project: Project) {
                     console.attachToProcess(processHandler)
                     processHandler.startNotify()
                     
-                    success = true
                     success = true
                 } catch (e: Exception) {
                     throw e
