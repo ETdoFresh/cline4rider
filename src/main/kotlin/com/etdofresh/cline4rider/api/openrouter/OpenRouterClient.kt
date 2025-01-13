@@ -85,6 +85,7 @@ class OpenRouterClient(private val settings: ClineSettings) {
     }
 
     fun sendMessages(messages: List<ClineMessage>, onChunk: ((String, ResponseStats?) -> Unit)? = null): String {
+        logger.warn("Sending message to OpenRouter API (truncated content): ${messages.lastOrNull()?.content?.firstOrNull()?.let { if (it is ClineMessage.Content.Text) it.text.take(100) else "non-text content" }}")
         val apiKey = settings.getApiKey()
         if (apiKey.isNullOrEmpty()) {
             throw OpenRouterException("API key is not configured. Please configure your API key in Settings | Tools | Cline")
@@ -190,11 +191,12 @@ class OpenRouterClient(private val settings: ClineSettings) {
                                                     Thread {
                                                         // Add a 1000ms delay before fetching stats
                                                         Thread.sleep(1000)
-                                                        val stats = fetchGenerationStats(id, apiKey)
-                                                        // Always invoke callback with final stats, even if null
-                                                        com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
-                                                            onChunk("", stats)
-                                                        }
+                                                val stats = fetchGenerationStats(id, apiKey)
+                                                logger.warn("Stream complete, sending final stats")
+                                                // Always invoke callback with final stats, even if null
+                                                com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+                                                    onChunk("", stats)
+                                                }
                                                     }.start()
                                                 }
                                                 continue
@@ -209,6 +211,7 @@ class OpenRouterClient(private val settings: ClineSettings) {
                                                     val content = chunk.choices.firstOrNull()?.delta?.content
                                                     if (content != null) {
                                                         fullResponse.append(content)
+                                                        logger.debug("Received chunk: ${content.take(100)}")
                                                         com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
                                                             onChunk(content, null)
                                                         }

@@ -209,40 +209,46 @@ class ChatViewModel(private val project: Project) {
                 // Handle streaming responses
                 var totalCost = 0.0
                 var cacheDiscount = 0.0
+                logger.warn("Sending message to API (truncated): ${messagesToSend.lastOrNull()?.content?.firstOrNull()?.let { if (it is ClineMessage.Content.Text) it.text.take(100) else "non-text content" }}")
+                
                 apiClient.sendMessages(messagesToSend) { chunk, stats ->
                     if (!errorOccurred) {
-                        currentContent.append(chunk)
-                        stats?.let { 
-                            totalCost = it.total_cost ?: 0.0
-                            cacheDiscount = it.cache_discount ?: 0.0
-                        }
-                        
-                        // Update message with new content and timestamp on every chunk
-                        ApplicationManager.getApplication().invokeLater {
-                            try {
-                                val updatedAssistantMessage = messages.last().copy(
-                                    content = listOf(ClineMessage.Content.Text(text = currentContent.toString())),
-                                    cost = totalCost,
-                                    cacheDiscount = cacheDiscount,
-                                    timestamp = System.currentTimeMillis(),
-                                    model = ClineSettings.getInstance(project).state.model,
-                                    toolCalls = emptyList()
-                                )
-                                messages[messages.size - 1] = updatedAssistantMessage
-                                
-                                // Update the chat history in a write action
-                                ApplicationManager.getApplication().runWriteAction {
-                                    chatHistory.addMessage(currentConversationId!!, updatedAssistantMessage)
-                                    chatHistory.saveState()
+                        if (stats != null) {
+                            // This is the final callback with stats
+                            logger.warn("Received complete response (truncated): ${currentContent.toString().take(100)}")
+                            totalCost = stats.total_cost ?: 0.0
+                            cacheDiscount = stats.cache_discount ?: 0.0
+                            
+                            // Update UI only once with complete response
+                            ApplicationManager.getApplication().invokeLater {
+                                try {
+                                    val updatedAssistantMessage = messages.last().copy(
+                                        content = listOf(ClineMessage.Content.Text(text = currentContent.toString())),
+                                        cost = totalCost,
+                                        cacheDiscount = cacheDiscount,
+                                        timestamp = System.currentTimeMillis(),
+                                        model = ClineSettings.getInstance(project).state.model,
+                                        toolCalls = emptyList()
+                                    )
+                                    messages[messages.size - 1] = updatedAssistantMessage
+                                    
+                                    // Update the chat history in a write action
+                                    ApplicationManager.getApplication().runWriteAction {
+                                        chatHistory.addMessage(currentConversationId!!, updatedAssistantMessage)
+                                        chatHistory.saveState()
+                                    }
+                                    
+                                    // Notify listeners outside the write action
+                                    notifyMessageListeners()
+                                    notifyHistoryListeners()
+                                } catch (e: Exception) {
+                                    errorOccurred = true
+                                    handleError(e)
                                 }
-                                
-                                // Notify listeners outside the write action
-                                notifyMessageListeners()
-                                notifyHistoryListeners()
-                            } catch (e: Exception) {
-                                errorOccurred = true
-                                handleError(e)
                             }
+                        } else {
+                            // Accumulate chunks without updating UI
+                            currentContent.append(chunk)
                         }
                     }
                 }

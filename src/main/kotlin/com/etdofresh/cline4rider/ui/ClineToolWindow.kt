@@ -1063,51 +1063,56 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 addMessageToUI(message)
             }
 
-            // Only process the last message when it's complete (not processing)
+                // Only process the last message when it's complete (not processing)
             val lastMessage = messages.lastOrNull()
-            if (lastMessage?.role == ClineMessage.Role.ASSISTANT && !viewModel.isProcessing()) {
+            if (lastMessage?.role == ClineMessage.Role.ASSISTANT) {
                 val rawText = lastMessage.content.filterIsInstance<ClineMessage.Content.Text>().joinToString("\n") { it.text }
                 
-                // Check for valid tool calls but exclude attempt_completion
-                val hasValidToolInContent = lastMessage.content.any { content ->
-                    when (content) {
-                        is ClineMessage.Content.Text -> {
-                            val text = content.text
-                            // Use the same regex patterns as TaskProcessor for consistency
-                            val validTools = listOf("execute_command", "browser_action", "write_to_file", "replace_in_file")
-                            validTools.any { tool ->
-                                val openTagPattern = """<\s*$tool\s*>""".toRegex()
-                                val closeTagPattern = """</\s*$tool\s*>""".toRegex()
-                                openTagPattern.containsMatchIn(text) && closeTagPattern.containsMatchIn(text)
-                            } && !text.contains("<attempt_completion>")
-                        }
-                        else -> false
-                    }
-                }
-                
-                val hasValidToolCall = lastMessage.toolCalls.any { toolCall ->
-                    toolCall.name != "attempt_completion"
-                }
-                
-                if (hasValidToolInContent || hasValidToolCall) {
-                    actionButtonsPanel.isVisible = true
-                    // Start the timer for "Proceed while running" button
-                    proceedTimer?.start()
-                } else {
-                    // Only send error message if no tool usage is found in complete response
-                    if (!taskProcessor.containsToolUsage(rawText)) {
-                        val errorMessage = taskProcessor.processAssistantResponse(rawText)
-                        if (errorMessage != null) {
-                            // Wrap error message in task tags to prevent empty content error
-                            sendMessage(listOf(ClineMessage.Content.Text(text = "<task>$errorMessage</task>")))
+                if (!viewModel.isProcessing()) {
+                    // Only check for tools and errors after streaming is complete
+                    // Check for valid tool calls but exclude attempt_completion
+                    val hasValidToolInContent = lastMessage.content.any { content ->
+                        when (content) {
+                            is ClineMessage.Content.Text -> {
+                                val text = content.text
+                                // Use the same regex patterns as TaskProcessor for consistency
+                                val validTools = listOf("execute_command", "browser_action", "write_to_file", "replace_in_file")
+                                validTools.any { tool ->
+                                    val openTagPattern = """<\s*$tool\s*>""".toRegex()
+                                    val closeTagPattern = """</\s*$tool\s*>""".toRegex()
+                                    openTagPattern.containsMatchIn(text) && closeTagPattern.containsMatchIn(text)
+                                } && !text.contains("<attempt_completion>")
+                            }
+                            else -> false
                         }
                     }
-                    actionButtonsPanel.isVisible = false
-                    proceedTimer?.stop()
-                    proceedTimer = null
+                    
+                    val hasValidToolCall = lastMessage.toolCalls.any { toolCall ->
+                        toolCall.name != "attempt_completion"
+                    }
+                    
+                    if (hasValidToolInContent || hasValidToolCall) {
+                        actionButtonsPanel.isVisible = true
+                        // Start the timer for "Proceed while running" button
+                        proceedTimer?.start()
+                    } else {
+                        // Only send error message if no tool usage is found in complete response
+                        if (!taskProcessor.containsToolUsage(rawText)) {
+                            val errorMessage = taskProcessor.processAssistantResponse(rawText)
+                            if (errorMessage != null) {
+                                // Wrap error message in task tags to prevent empty content error
+                                sendMessage(listOf(ClineMessage.Content.Text(text = "<task>$errorMessage</task>")))
+                            }
+                        }
+                        actionButtonsPanel.isVisible = false
+                        proceedTimer?.stop()
+                        proceedTimer = null
+                    }
                 }
-            } else {
-                // Hide buttons if not an assistant message or if processing
+            }
+            
+            // Hide buttons if not an assistant message or if processing
+            if (lastMessage?.role != ClineMessage.Role.ASSISTANT || viewModel.isProcessing()) {
                 actionButtonsPanel.isVisible = false
                 proceedTimer?.stop()
                 proceedTimer = null
@@ -1117,7 +1122,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             chatPanel.revalidate()
             chatPanel.repaint()
             
-            // Smooth auto-scroll with animation
+            // Smooth auto-scroll with improved animation
             val vertical = chatPanel.parent.parent as? JScrollPane
             if (vertical != null) {
                 val scrollBar = vertical.verticalScrollBar
@@ -1125,18 +1130,26 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 
                 // Only animate if we're not already at the bottom
                 if (scrollBar.value != targetValue) {
+                    var startTime = System.currentTimeMillis()
+                    val startValue = scrollBar.value
+                    val totalDistance = targetValue - startValue
+                    val animationDuration = 150 // Duration in milliseconds
+                    
                     var timer: Timer? = null
-                    timer = Timer(8) { // ~120 FPS for smoother animation
-                        val currentValue = scrollBar.value
-                        val step = (targetValue - currentValue) / 6 // Gentler interpolation
-                        if (step > 0) {
-                            scrollBar.value = currentValue + step.toInt().coerceAtLeast(1)
-                            if (scrollBar.value >= targetValue - 1) {
-                                timer?.stop()
-                                scrollBar.value = targetValue // Ensure we reach exact target
-                            }
-                        } else {
+                    timer = Timer(16) { // 60 FPS for smooth animation
+                        val currentTime = System.currentTimeMillis()
+                        val elapsed = (currentTime - startTime).toFloat()
+                        val progress = (elapsed / animationDuration).coerceIn(0f, 1f)
+                        
+                        // Ease-out cubic interpolation for smoother deceleration
+                        val easedProgress = 1f - (1f - progress) * (1f - progress) * (1f - progress)
+                        val newValue = startValue + (totalDistance * easedProgress).toInt()
+                        
+                        scrollBar.value = newValue
+                        
+                        if (progress >= 1f) {
                             timer?.stop()
+                            scrollBar.value = targetValue // Ensure we reach exact target
                         }
                     }.apply {
                         isRepeats = true
