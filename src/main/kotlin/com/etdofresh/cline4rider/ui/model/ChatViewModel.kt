@@ -162,10 +162,10 @@ class ChatViewModel(private val project: Project) {
             timestamp = System.currentTimeMillis()
         ))
 
-        // Create an assistant message placeholder with current timestamp
+        // Create an assistant message placeholder with initial content
         val assistantMessage = ClineMessage(
             role = ClineMessage.Role.ASSISTANT,
-            content = emptyList(),
+            content = listOf(ClineMessage.Content.Text(text = "Processing...")),
             timestamp = System.currentTimeMillis()
         )
         addMessage(assistantMessage)
@@ -220,16 +220,13 @@ class ChatViewModel(private val project: Project) {
                         // Update message with new content and timestamp on every chunk
                         ApplicationManager.getApplication().invokeLater {
                             try {
-                                val currentText = currentContent.toString()
-                                val toolCalls = emptyList<ClineMessage.ToolCall>()
-                                
                                 val updatedAssistantMessage = messages.last().copy(
-                                    content = listOf(ClineMessage.Content.Text(text = currentText)),
+                                    content = listOf(ClineMessage.Content.Text(text = currentContent.toString())),
                                     cost = totalCost,
                                     cacheDiscount = cacheDiscount,
                                     timestamp = System.currentTimeMillis(),
                                     model = ClineSettings.getInstance(project).state.model,
-                                    toolCalls = toolCalls
+                                    toolCalls = emptyList()
                                 )
                                 messages[messages.size - 1] = updatedAssistantMessage
                                 

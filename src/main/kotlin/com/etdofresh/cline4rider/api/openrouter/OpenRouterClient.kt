@@ -95,12 +95,15 @@ class OpenRouterClient(private val settings: ClineSettings) {
         }
         
         messages.forEach { message ->
-            if (message.content.isEmpty()) {
-                throw OpenRouterException("Message content cannot be empty")
-            }
-            // Check if any text content is blank
-            if (message.content.filterIsInstance<ClineMessage.Content.Text>().all { it.text.isBlank() }) {
-                throw OpenRouterException("Message text content cannot be blank")
+            // Skip content validation for assistant messages (they may be placeholders)
+            if (message.role != ClineMessage.Role.ASSISTANT) {
+                if (message.content.isEmpty()) {
+                    throw OpenRouterException("Message content cannot be empty")
+                }
+                // Check if any text content is blank
+                if (message.content.filterIsInstance<ClineMessage.Content.Text>().all { it.text.isBlank() }) {
+                    throw OpenRouterException("Message text content cannot be blank")
+                }
             }
         }
 
@@ -198,18 +201,23 @@ class OpenRouterClient(private val settings: ClineSettings) {
                                             }
                                             
                                             try {
-                                                val chunk = json.decodeFromString<ChatCompletionChunk>(data)
-                                                lastChunkId = chunk.id
-                                                logger.debug("Got chunk ID: ${chunk.id}")
-                                                val content = chunk.choices.firstOrNull()?.delta?.content
-                                                if (content != null) {
-                                                    fullResponse.append(content)
-                                                    com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
-                                                        onChunk(content, null)
+                                                // Skip malformed chunks
+                                                if (data.endsWith("}")) {
+                                                    val chunk = json.decodeFromString<ChatCompletionChunk>(data)
+                                                    lastChunkId = chunk.id
+                                                    logger.debug("Got chunk ID: ${chunk.id}")
+                                                    val content = chunk.choices.firstOrNull()?.delta?.content
+                                                    if (content != null) {
+                                                        fullResponse.append(content)
+                                                        com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+                                                            onChunk(content, null)
+                                                        }
                                                     }
+                                                } else {
+                                                    logger.debug("Skipping incomplete chunk: $data")
                                                 }
                                             } catch (e: Exception) {
-                                                logger.warn("Failed to parse chunk", e)
+                                                logger.debug("Failed to parse chunk: $data", e)
                                             }
                                         }
                                     }

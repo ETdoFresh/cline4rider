@@ -1063,53 +1063,48 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 addMessageToUI(message)
             }
 
-            // Process the last message for tool calls and validation
+            // Only process the last message when it's complete (not processing)
             val lastMessage = messages.lastOrNull()
             if (lastMessage?.role == ClineMessage.Role.ASSISTANT && !viewModel.isProcessing()) {
                 val rawText = lastMessage.content.filterIsInstance<ClineMessage.Content.Text>().joinToString("\n") { it.text }
                 
-                // Check if response contains any tool usage
-                if (!taskProcessor.containsToolUsage(rawText)) {
-                    // If no tool usage, send an error message back
-                    val errorMessage = taskProcessor.processAssistantResponse(rawText)
-                    if (errorMessage != null) {
-                        // Wrap error message in task tags to prevent empty content error
-                        sendMessage(listOf(ClineMessage.Content.Text(text = "<task>$errorMessage</task>")))
+                // Check for valid tool calls but exclude attempt_completion
+                val hasValidToolInContent = lastMessage.content.any { content ->
+                    when (content) {
+                        is ClineMessage.Content.Text -> {
+                            val text = content.text
+                            // Use the same regex patterns as TaskProcessor for consistency
+                            val validTools = listOf("execute_command", "browser_action", "write_to_file", "replace_in_file")
+                            validTools.any { tool ->
+                                val openTagPattern = """<\s*$tool\s*>""".toRegex()
+                                val closeTagPattern = """</\s*$tool\s*>""".toRegex()
+                                openTagPattern.containsMatchIn(text) && closeTagPattern.containsMatchIn(text)
+                            } && !text.contains("<attempt_completion>")
+                        }
+                        else -> false
+                    }
+                }
+                
+                val hasValidToolCall = lastMessage.toolCalls.any { toolCall ->
+                    toolCall.name != "attempt_completion"
+                }
+                
+                if (hasValidToolInContent || hasValidToolCall) {
+                    actionButtonsPanel.isVisible = true
+                    // Start the timer for "Proceed while running" button
+                    proceedTimer?.start()
+                } else {
+                    // Only send error message if no tool usage is found in complete response
+                    if (!taskProcessor.containsToolUsage(rawText)) {
+                        val errorMessage = taskProcessor.processAssistantResponse(rawText)
+                        if (errorMessage != null) {
+                            // Wrap error message in task tags to prevent empty content error
+                            sendMessage(listOf(ClineMessage.Content.Text(text = "<task>$errorMessage</task>")))
+                        }
                     }
                     actionButtonsPanel.isVisible = false
                     proceedTimer?.stop()
                     proceedTimer = null
-                } else {
-                    // Check for valid tool calls but exclude attempt_completion
-                    val hasValidToolInContent = lastMessage.content.any { content ->
-                        when (content) {
-                            is ClineMessage.Content.Text -> {
-                                val text = content.text
-                                // Use the same regex patterns as TaskProcessor for consistency
-                                val validTools = listOf("execute_command", "browser_action", "write_to_file", "replace_in_file")
-                                validTools.any { tool ->
-                                    val openTagPattern = """<\s*$tool\s*>""".toRegex()
-                                    val closeTagPattern = """</\s*$tool\s*>""".toRegex()
-                                    openTagPattern.containsMatchIn(text) && closeTagPattern.containsMatchIn(text)
-                                } && !text.contains("<attempt_completion>")
-                            }
-                            else -> false
-                        }
-                    }
-                    
-                    val hasValidToolCall = lastMessage.toolCalls.any { toolCall ->
-                        toolCall.name != "attempt_completion"
-                    }
-                    
-                    if ((hasValidToolInContent || hasValidToolCall) && !viewModel.isProcessing()) {
-                        actionButtonsPanel.isVisible = true
-                        // Start the timer for "Proceed while running" button
-                        proceedTimer?.start()
-                    } else {
-                        actionButtonsPanel.isVisible = false
-                        proceedTimer?.stop()
-                        proceedTimer = null
-                    }
                 }
             } else {
                 // Hide buttons if not an assistant message or if processing

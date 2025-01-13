@@ -100,20 +100,29 @@ class ChatHistory : PersistentStateComponent<ChatHistory> {
 
     fun saveState() {
         try {
-            if (ApplicationManager.getApplication().isDispatchThread) {
-                // If we're on EDT, schedule the save on a background thread
-                ApplicationManager.getApplication().executeOnPooledThread {
-                    ApplicationManager.getApplication().invokeAndWait {
-                        ApplicationManager.getApplication().saveSettings()
+            // Use a background task to avoid UI freezes
+            com.intellij.openapi.application.ApplicationManager.getApplication().executeOnPooledThread {
+                try {
+                    // Use invokeLater to ensure we're on the EDT when saving settings
+                    com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
+                        try {
+                            com.intellij.openapi.application.ApplicationManager.getApplication().saveSettings()
+                        } catch (e: Exception) {
+                            // Log error but don't rethrow to avoid crashing the UI
+                            com.intellij.openapi.diagnostic.Logger.getInstance(ChatHistory::class.java)
+                                .warn("Failed to save chat history", e)
+                        }
                     }
-                }
-            } else {
-                // If we're already on a background thread, invoke directly
-                ApplicationManager.getApplication().invokeAndWait {
-                    ApplicationManager.getApplication().saveSettings()
+                } catch (e: Exception) {
+                    // Log error but don't rethrow to avoid crashing the UI
+                    com.intellij.openapi.diagnostic.Logger.getInstance(ChatHistory::class.java)
+                        .warn("Failed to save chat history", e)
                 }
             }
         } catch (e: Exception) {
+            // Log error but don't rethrow to avoid crashing the UI
+            com.intellij.openapi.diagnostic.Logger.getInstance(ChatHistory::class.java)
+                .warn("Failed to save chat history", e)
         }
     }
 
