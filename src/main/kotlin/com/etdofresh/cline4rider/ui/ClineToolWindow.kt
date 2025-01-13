@@ -1026,15 +1026,25 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                             proceedPanel.isVisible = false
                         }
                         
+                        // Hide approve/deny buttons immediately
+                        (actionButtonsPanel.components.firstOrNull() as? JPanel)?.isVisible = false
+                        
+                        // Get proceed panel and ensure it starts hidden
+                        (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
+                            proceedPanel.isVisible = false
+                        }
+                        
                         // Reset and start timer to show proceed button after 1 second
                         proceedTimer?.stop()
                         proceedTimer = null
                         proceedTimer = Timer(1000) {
                             SwingUtilities.invokeLater {
-                                (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
-                                    proceedPanel.isVisible = true
-                                    proceedPanel.revalidate()
-                                    proceedPanel.repaint()
+                                if (taskProcessor.getCurrentCommandOutput() != null) {
+                                    (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
+                                        proceedPanel.isVisible = true
+                                        proceedPanel.revalidate()
+                                        proceedPanel.repaint()
+                                    }
                                 }
                                 (it.source as Timer).stop()
                             }
@@ -1136,74 +1146,51 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 addMessageToUI(message)
             }
 
-                // Only process the last message when it's complete (not processing)
+            // Process the last message when it's complete (not processing)
             val lastMessage = messages.lastOrNull()
-            if (lastMessage?.role == ClineMessage.Role.ASSISTANT) {
+            if (lastMessage?.role == ClineMessage.Role.ASSISTANT && !viewModel.isProcessing()) {
                 val rawText = lastMessage.content.filterIsInstance<ClineMessage.Content.Text>().joinToString("\n") { it.text }
                 
-                if (!viewModel.isProcessing()) {
-                    // First check if there's any tool usage
-                    if (!taskProcessor.containsToolUsage(rawText)) {
-                        // Send error message if no tool usage is found
-                        val errorMessage = taskProcessor.processAssistantResponse(rawText)
-                        if (errorMessage != null) {
-                            // Wrap error message in task tags to prevent empty content error
-                            sendMessage(listOf(ClineMessage.Content.Text(text = "<task>$errorMessage</task>")))
-                        }
-                    } else {
-                        // Check if there's a running process
-                        val isProcessRunning = taskProcessor.getCurrentCommandOutput() != null
-                        
-                        // Check for valid tool calls but exclude attempt_completion
-                        val hasValidToolInContent = lastMessage.content.any { content ->
-                            when (content) {
-                                is ClineMessage.Content.Text -> {
-                                    val text = content.text
-                                    // Use the same regex patterns as TaskProcessor for consistency
-                                    val validTools = listOf("execute_command", "browser_action", "write_to_file", "replace_in_file")
-                                    validTools.any { tool ->
-                                        val openTagPattern = """<\s*$tool\s*>""".toRegex()
-                                        val closeTagPattern = """</\s*$tool\s*>""".toRegex()
-                                        openTagPattern.containsMatchIn(text) && closeTagPattern.containsMatchIn(text)
-                                    } && !text.contains("<attempt_completion>")
-                                }
-                                else -> false
-                            }
-                        }
-                        
-                        val hasValidToolCall = lastMessage.toolCalls.any { toolCall ->
-                            toolCall.name != "attempt_completion"
-                        }
-
-                        if (isProcessRunning) {
-                            // Show action buttons panel with just the proceed button
-                            actionButtonsPanel.isVisible = true
-                            
-                            // Hide approve/deny buttons
-                            (actionButtonsPanel.components.firstOrNull() as? JPanel)?.let { buttonsPanel ->
-                                buttonsPanel.isVisible = false
-                            }
-                            
-                            // Get proceed panel and ensure it starts hidden
-                            (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
-                                proceedPanel.isVisible = false
-                            }
-                        } else if (hasValidToolInContent || hasValidToolCall) {
-                            // Show action buttons panel with approve/deny buttons
-                            actionButtonsPanel.isVisible = true
-                            
-                            // Show approve/deny buttons
-                            (actionButtonsPanel.components.firstOrNull() as? JPanel)?.let { buttonsPanel ->
-                                buttonsPanel.isVisible = true
-                            }
-                            
-                            // Hide proceed button
-                            (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.let { proceedPanel ->
-                                proceedPanel.isVisible = false
-                            }
-                        }
+                // First check if there's any tool usage
+                if (!taskProcessor.containsToolUsage(rawText)) {
+                    // No tool usage found, show error immediately
+                    val errorMessage = taskProcessor.processAssistantResponse(rawText)
+                    if (errorMessage != null) {
+                        // Wrap error message in task tags to prevent empty content error
+                        sendMessage(listOf(ClineMessage.Content.Text(text = "<task>$errorMessage</task>")))
                     }
-                    
+                    return@invokeLater
+                }
+
+                // Check for running process
+                if (taskProcessor.getCurrentCommandOutput() != null) {
+                    // Running process, show proceed panel
+                    actionButtonsPanel.isVisible = true
+                    // Hide approve/deny buttons, show proceed panel
+                    (actionButtonsPanel.components.firstOrNull() as? JPanel)?.isVisible = false
+                    (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.isVisible = false
+                    return@invokeLater
+                }
+
+                // Parse tool from response
+                val tool = taskProcessor.parseToolFromResponse(rawText)
+                if (tool != null && tool.name != "attempt_completion") {
+                    // Show approve/deny buttons for valid tools
+                    actionButtonsPanel.isVisible = true
+                    // Show approve/deny buttons, hide proceed panel
+                    (actionButtonsPanel.components.firstOrNull() as? JPanel)?.apply {
+                        isVisible = true
+                        revalidate()
+                        repaint()
+                    }
+                    (actionButtonsPanel.components.getOrNull(2) as? JPanel)?.apply {
+                        isVisible = false
+                        revalidate()
+                        repaint()
+                    }
+                    // Force panel update
+                    actionButtonsPanel.revalidate()
+                    actionButtonsPanel.repaint()
                 }
             }
             
