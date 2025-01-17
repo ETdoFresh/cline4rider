@@ -25,8 +25,12 @@
   <!-- Extension points defined by the plugin.
        Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
   <extensions defaultExtensionNs="com.intellij">
-    <!-- Application-level service for Cline core functionality -->
+    <!-- Enable debug logging -->
     <applicationService serviceImplementation="com.etdofresh.cline4rider.ClineApplicationService"/>
+    <applicationService serviceImplementation="com.intellij.openapi.diagnostic.Logger"/>
+    
+    <!-- Configure logging -->
+    <errorHandler implementation="com.intellij.diagnostic.ITNReporter"/>
     
     <!-- Project-level service for per-project state -->
     <projectService serviceImplementation="com.etdofresh.cline4rider.ClineProjectService"/>
@@ -35,6 +39,19 @@
     
     <!-- Startup activity for project initialization -->
     <postStartupActivity implementation="com.etdofresh.cline4rider.startup.ClineStartupActivity"/>
+
+    <!-- Tool Window registration -->
+    <toolWindow id="Cline"
+                anchor="right"
+                factoryClass="com.etdofresh.cline4rider.ui.ClineToolWindowFactory"
+                icon="META-INF/pluginIcon.svg"/>
+
+    <!-- Settings configuration -->
+    <projectConfigurable 
+        instance="com.etdofresh.cline4rider.settings.ClineSettingsConfigurable"
+        displayName="Cline4Rider"
+        id="preferences.ClineSettings"
+        parentId="tools"/>
   </extensions>
 
   <applicationListeners>
@@ -43,20 +60,35 @@
               topic="com.intellij.openapi.application.ApplicationListener"/>
   </applicationListeners>
 
-  <!-- Tool Window registration -->
-  <extensions defaultExtensionNs="com.intellij">
-    <toolWindow id="Cline"
-                anchor="right"
-                factoryClass="com.etdofresh.cline4rider.ui.ClineToolWindowFactory"
-                icon="META-INF/pluginIcon.svg"/>
-  </extensions>
-
-  <!-- Settings configuration -->
-  <extensions defaultExtensionNs="com.intellij">
-    <projectConfigurable 
-        instance="com.etdofresh.cline4rider.settings.ClineSettingsConfigurable"
-        displayName="Cline4Rider"
-        id="preferences.ClineSettings"
-        parentId="tools"/>
-  </extensions>
+  <!-- Actions registration -->
+  <actions>
+    <!-- Navigation actions -->
+    <group id="Cline.Toolbar" class="com.intellij.openapi.actionSystem.DefaultActionGroup" popup="false">
+      <action id="Cline.HomeAction"
+              class="com.etdofresh.cline4rider.actions.HomeAction"
+              text="Home"
+              description="Switch to Home view"
+              icon="AllIcons.Actions.Menu_open"/>
+      
+      <action id="Cline.ChatAction"
+              class="com.etdofresh.cline4rider.actions.ChatAction"
+              text="Chat"
+              description="Switch to Chat view"
+              icon="AllIcons.Actions.IntentionBulb"/>
+      
+      <action id="Cline.HistoryAction"
+              class="com.etdofresh.cline4rider.actions.HistoryAction"
+              text="History"
+              description="Switch to History view"
+              icon="AllIcons.Vcs.History"/>
+      
+      <separator/>
+      
+      <action id="Cline.SettingsAction"
+              class="com.etdofresh.cline4rider.actions.SettingsAction"
+              text="Settings"
+              description="Open Settings"
+              icon="AllIcons.General.Settings"/>
+    </group>
+  </actions>
 </idea-plugin>

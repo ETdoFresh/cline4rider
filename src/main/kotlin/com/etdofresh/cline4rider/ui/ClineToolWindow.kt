@@ -1,6 +1,7 @@
 package com.etdofresh.cline4rider.ui
 
 import com.etdofresh.cline4rider.model.ClineMessage
+import java.awt.CardLayout
 import java.awt.Cursor
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
@@ -62,18 +63,30 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     }
     
     private val viewModel = ChatViewModel.getInstance(project)
-    private val tabbedPane = JBTabbedPane()
-    private var lastSelectedTab = 0
-    private val conversationStats = ConversationStats()
-    private val contentPanel = JPanel(BorderLayout()).apply {
+    private val cardLayout = CardLayout()
+    private val contentPanel = JPanel(cardLayout).apply {
         background = Color(45, 45, 45)
         preferredSize = Dimension(JBUI.scale(400), JBUI.scale(150))
         minimumSize = Dimension(JBUI.scale(300), JBUI.scale(100))
     }
+    private val conversationStats = ConversationStats()
+    private lateinit var historyPanel: JPanel
+
+    fun showHomeView() {
+        cardLayout.show(contentPanel, "HOME")
+    }
+
+    fun showChatView() {
+        cardLayout.show(contentPanel, "CHAT")
+    }
+
+    fun showHistoryView() {
+        cardLayout.show(contentPanel, "HISTORY")
+    }
     private lateinit var actionButtonsPanel: JPanel
     private var proceedTimer: Timer? = null
     
-    private val chatPanel = JPanel().apply {
+    private var messagePanel = JPanel().apply {
         layout = BoxLayout(this, BoxLayout.Y_AXIS)
         background = Color(45, 45, 45)
         maximumSize = Dimension(Int.MAX_VALUE, Int.MAX_VALUE)
@@ -175,41 +188,21 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
     }
 
     private fun setupUI() {
-        // Setup main chat panel
-        val mainChatPanel = createMainChatPanel()
+        // Initialize CardLayout
+        contentPanel.layout = cardLayout
         
-        // Create and store home panel reference
+        // Create panels for each view
         homePanel = createHomePanel()
+        val mainChatPanel = createMainChatPanel()
+        val historyPanel = createHistoryPanel()
         
-        // Setup tabs with icons
-        tabbedPane.apply {
-            addTab("Home", AllIcons.Nodes.HomeFolder, homePanel)
-            addTab("Chat", AllIcons.Nodes.Folder, mainChatPanel)
-            addTab("History", AllIcons.Vcs.History, createHistoryPanel())
-            addTab("Settings", AllIcons.General.Settings, JPanel())
-            
-            addChangeListener { e ->
-                val tabbedPane = e.source as JBTabbedPane
-                val newIndex = tabbedPane.selectedIndex
-                if (newIndex == 3) { // Settings tab
-                    tabbedPane.selectedIndex = lastSelectedTab // Return to previous tab
-                    com.intellij.openapi.application.ApplicationManager.getApplication().invokeLater {
-                        com.intellij.openapi.options.ShowSettingsUtil.getInstance().showSettingsDialog(
-                            project,
-                            "Cline4Rider"
-                        )
-                    }
-                } else {
-                    lastSelectedTab = newIndex
-                }
-            }
-            
-            val tabsPanel = JPanel(BorderLayout()).apply {
-                add(tabbedPane, BorderLayout.CENTER)
-            }
-            
-            contentPanel.add(tabsPanel, BorderLayout.CENTER)
-        }
+        // Add panels to CardLayout with names
+        contentPanel.add(homePanel, "HOME")
+        contentPanel.add(mainChatPanel, "CHAT")
+        contentPanel.add(historyPanel, "HISTORY")
+        
+        // Set initial view
+        showHomeView()
     }
 
     private fun createMainChatPanel(): JPanel {
@@ -244,7 +237,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 add(topPanel, BorderLayout.NORTH)
                 
                 // Create scroll pane for chat content only
-                val scrollPane = JBScrollPane(chatPanel).apply {
+                val scrollPane = JBScrollPane(messagePanel).apply {
                 border = BorderFactory.createEmptyBorder()
                 viewport.background = Color(45, 45, 45)
                 verticalScrollBar.unitIncrement = 16
@@ -490,7 +483,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             addMouseListener(object : MouseAdapter() {
                 override fun mouseClicked(e: MouseEvent) {
                     viewModel.loadConversation(conversation.id)
-                    tabbedPane.selectedIndex = 1 // Switch to chat tab
+                    showChatView() // Switch to chat view
                 }
                 override fun mouseEntered(e: MouseEvent) {
                     background = Color(60, 60, 60)
@@ -645,7 +638,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 addMouseListener(object : MouseAdapter() {
                     override fun mouseClicked(e: MouseEvent) {
                         viewModel.loadConversation(conversation.id)
-                        tabbedPane.selectedIndex = 1 // Switch to chat tab
+                        showChatView() // Switch to chat view
                     }
                     override fun mouseEntered(e: MouseEvent) {
                         background = Color(60, 60, 60)
@@ -771,7 +764,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                         addMouseListener(object : MouseAdapter() {
                             override fun mouseClicked(e: MouseEvent) {
                                 viewModel.loadConversation(conversation.id)
-                                tabbedPane.selectedIndex = 1 // Switch to chat tab
+                                showChatView() // Switch to chat view
                             }
                             override fun mouseEntered(e: MouseEvent) {
                                 background = Color(60, 60, 60)
@@ -919,8 +912,6 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
                 homePanel.repaint()
                 historyContent.revalidate()
                 historyContent.repaint()
-                tabbedPane.revalidate()
-                tabbedPane.repaint()
                 
                 // Force layout update
                 contentPanel.validate()
@@ -943,9 +934,9 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
 
         clearButton.addActionListener {
             viewModel.clearMessages()
-            chatPanel.removeAll()
-            chatPanel.revalidate()
-            chatPanel.repaint()
+            messagePanel.removeAll()
+            messagePanel.revalidate()
+            messagePanel.repaint()
             conversationStats.updateStats(emptyList())
         }
 
@@ -985,7 +976,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             
             viewModel.sendMessage(processedContent)
             // Switch to chat tab to show the conversation
-            tabbedPane.selectedIndex = 1
+            showChatView()
         } catch (e: Exception) {
             logger.warn("Failed to send message: ${e.message}")
         }
@@ -1137,7 +1128,7 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
 
     private fun refreshMessages() {
         SwingUtilities.invokeLater {
-            chatPanel.removeAll()
+            messagePanel.removeAll()
             actionButtonsPanel.isVisible = false
 
             // Get all messages and process them
@@ -1192,11 +1183,11 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
             }
 
             // Batch UI updates
-            chatPanel.revalidate()
-            chatPanel.repaint()
+            messagePanel.revalidate()
+            messagePanel.repaint()
             
             // Smooth auto-scroll with improved animation
-            val vertical = chatPanel.parent.parent as? JScrollPane
+            val vertical = messagePanel.parent.parent as? JScrollPane
             if (vertical != null) {
                 val scrollBar = vertical.verticalScrollBar
                 val targetValue = scrollBar.maximum
@@ -1403,8 +1394,8 @@ class ClineToolWindow(private val project: Project, private val toolWindow: Tool
         messagePanel.add(headerPanel, BorderLayout.NORTH)
         messagePanel.add(contentPanel, BorderLayout.CENTER)
         
-        chatPanel.add(messagePanel)
-        chatPanel.add(Box.createVerticalStrut(1))
+        this.messagePanel.add(messagePanel)
+        this.messagePanel.add(Box.createVerticalStrut(1))
     }
 
     private fun openConfigEditor(fileName: String, currentContent: String) {
