@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<idea-plugin>
+    <id>com.aihelper</id>
+    <name>AI Helper</name>
+    <vendor email="support@example.com" url="http://www.example.com">Your Company</vendor>
+    
+    <description><![CDATA[
+        AI Helper plugin for IntelliJ IDEA.
+        <ul>
+            <li>Intelligent code assistance</li>
+            <li>Task management</li>
+            <li>History tracking</li>
+        </ul>
+    ]]></description>
+
+    <idea-version since-build="231" until-build="241.*"/>
+    <depends>com.intellij.modules.platform</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="AI Helper"
+                   anchor="right"
+                   factoryClass="com.aihelper.window.AIHelperToolWindowFactory"/>
+    </extensions>
+</idea-plugin>

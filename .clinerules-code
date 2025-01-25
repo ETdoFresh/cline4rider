@@ -21,12 +21,16 @@
 - Handle errors explicitly and gracefully
 - Use appropriate error types and meaningful error messages
 - Fail fast and fail visibly
+- If encountering persistent or complex errors, switch to architect mode for analysis and guidance
+- Document error resolution approaches for future reference
 
 ## Testing
 - Write tests alongside production code
 - Prefer small, focused unit tests over large integration tests
 - Test edge cases and error conditions
 - Keep tests readable and maintainable
+- Verify code compiles and runs successfully before committing
+- Run local tests to ensure functionality works as expected
 
 ## Performance
 - Optimize only when performance is proven to be an issue
