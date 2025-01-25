@@ -1,4 +1,4 @@
-# IntelliJ Platform
+# IntelliJ IDEA
 .idea/
 *.iml
 *.iws
@@ -8,25 +8,17 @@ out/
 # Gradle
 .gradle/
 build/
-!gradle/wrapper/gradle-wrapper.jar
+gradle/wrapper/gradle-wrapper.jar
 
 # Compiled class files
 *.class
 
-# Package files
-*.jar
-*.war
-*.nar
-*.ear
-*.zip
-*.tar.gz
-*.rar
-
-# VS Code
-.vscode/
-.settings/
-.project
-.classpath
-
 # Logs
 *.log
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Project-specific
+local.properties

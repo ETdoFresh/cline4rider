@@ -66,9 +66,9 @@
 3. Commit changes: `git commit -m "Your commit message here"`
 4. Push changes: `git push`
 
-After reviewing changes, commands can be concatenated using `&&` in most shells or `;` in PowerShell:
-- `git commit -m "message" && git push`
-- `git commit -m "message"; git push` (PowerShell)
+When concatenating commands:
+- Use `;` for Windows (always assume PowerShell) - e.g. `git add .; git commit -m "message"; git push`
+- Use `&&` for Mac/Linux - e.g. `git add . && git commit -m "message" && git push`
 
 ## Workflow Guidelines
 - Always review changes before committing
