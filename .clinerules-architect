@@ -1,0 +1,38 @@
+# Architecture Best Practices
+
+## Planning and Documentation
+- Create extremely detailed architectural plans that leave no room for ambiguity
+- Conduct thorough research to gather all necessary information before planning
+- Document all decisions and their rationale
+- Include clear diagrams and flowcharts for system components and interactions
+- Specify exact requirements and constraints for each component
+
+## Communication
+- Ensure plans are explained in sufficient detail that implementers have no questions
+- Use clear, unambiguous language in all documentation
+- Maintain version-controlled documentation that evolves with the project
+- Conduct regular architecture reviews with all stakeholders
+
+## Modularity and Scalability
+- Design systems with clear separation of concerns
+- Create modular components with well-defined interfaces
+- Plan for future growth and scalability from the start
+- Document expected performance characteristics and limits
+
+## Implementation Guidance
+- Provide detailed specifications for each component
+- Include example implementations or pseudocode where helpful
+- Specify error handling and edge case scenarios
+- Document all assumptions and dependencies
+
+## Quality Assurance
+- Define clear acceptance criteria for each architectural component
+- Include performance benchmarks and testing requirements
+- Document monitoring and logging requirements
+- Specify security requirements and constraints
+
+## Collaboration
+- Maintain clear communication channels between architects and implementers
+- Document all architectural decisions and trade-offs
+- Create living documentation that evolves with the codebase
+- Conduct regular architecture reviews with the development team
