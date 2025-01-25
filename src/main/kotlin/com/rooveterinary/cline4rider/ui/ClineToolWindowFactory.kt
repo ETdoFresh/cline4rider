@@ -5,6 +5,8 @@ import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
 import com.intellij.ui.content.ContentFactory
+import com.intellij.openapi.util.IconLoader
+import com.intellij.openapi.options.ShowSettingsUtil
 import javax.swing.ButtonGroup
 
 class ClineToolWindowFactory : ToolWindowFactory {
@@ -34,16 +36,25 @@ class ClineToolWindowFactory : ToolWindowFactory {
             }
         }
 
+        // Load icons
+        val icons = mapOf(
+            "Home" to IconLoader.getIcon("/icons/home.svg", this::class.java),
+            "Tasks" to IconLoader.getIcon("/icons/tasks.svg", this::class.java),
+            "History" to IconLoader.getIcon("/icons/history.svg", this::class.java)
+        )
+
+        // Map of tab names to tooltips
+        val tooltips = mapOf(
+            "Home" to "Home",
+            "Tasks" to "Current Task",
+            "History" to "History"
+        )
+
         // Create navigation actions
         val tabs = listOf("Home", "Tasks", "History")
         tabs.forEach { tabName ->
-            val action = object : ToggleAction(tabName, "", null) {
-                init {
-                    templatePresentation.apply {
-                        text = tabName
-                    }
-                }
-
+            val tooltip = tooltips[tabName] ?: tabName
+            val action = object : ToggleAction(tooltip, tooltip, icons[tabName]) {
                 override fun isSelected(e: AnActionEvent): Boolean {
                     return mainContent.getCurrentTab() == tabName
                 }
@@ -56,11 +67,30 @@ class ClineToolWindowFactory : ToolWindowFactory {
 
                 override fun update(e: AnActionEvent) {
                     super.update(e)
-                    e.presentation.isEnabledAndVisible = true
+                    e.presentation.apply {
+                        isEnabledAndVisible = true
+                        icon = icons[tabName]
+                    }
                 }
             }
             navGroup.add(action)
         }
+
+        // Add settings action
+        val settingsAction = object : AnAction("Settings", "Settings", 
+            IconLoader.getIcon("/icons/settings.svg", this::class.java)) {
+            override fun actionPerformed(e: AnActionEvent) {
+                ShowSettingsUtil.getInstance().showSettingsDialog(null, "Cline4Rider")
+            }
+
+            override fun update(e: AnActionEvent) {
+                e.presentation.apply {
+                    isEnabledAndVisible = true
+                }
+            }
+        }
+        navGroup.addSeparator()
+        navGroup.add(settingsAction)
 
         // Set Home as default selected
         mainContent.showTab("Home")
