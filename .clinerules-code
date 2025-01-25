@@ -31,6 +31,8 @@
 - Keep tests readable and maintainable
 - Verify code compiles and runs successfully before committing
 - Run local tests to ensure functionality works as expected
+- Always run ./gradlew build before attempt_completion to verify code compiles
+- Fix any compilation errors before proceeding with completion
 
 ## Performance
 - Optimize only when performance is proven to be an issue

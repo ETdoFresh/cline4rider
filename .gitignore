@@ -1,23 +1,19 @@
-# Gradle
-.gradle/
-build/
-out/
-gradle-app.setting
-
-# IntelliJ IDEA
+# IntelliJ Platform
 .idea/
 *.iml
 *.iws
 *.ipr
-.idea_modules/
+out/
+
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
 
 # Compiled class files
 *.class
 
-# Log files
-*.log
-
-# Package Files
+# Package files
 *.jar
 *.war
 *.nar
@@ -26,9 +22,11 @@ gradle-app.setting
 *.tar.gz
 *.rar
 
-# virtual machine crash logs
-hs_err_pid*
+# VS Code
+.vscode/
+.settings/
+.project
+.classpath
 
-# OS-specific files
-.DS_Store
-Thumbs.db
+# Logs
+*.log
