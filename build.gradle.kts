@@ -11,6 +11,9 @@ version = "1.0.0"
 repositories {
     mavenCentral()
     maven {
+        url = uri("https://www.jetbrains.com/intellij-repository/releases")
+    }
+    maven {
         url = uri("https://plugins.jetbrains.com/maven")
     }
 }
@@ -26,6 +29,27 @@ intellij {
 
 dependencies {
     // Kotlin stdlib is automatically added by the Kotlin plugin
+    
+    // Test dependencies
+    testImplementation("junit:junit:4.13.2") {
+        because("JUnit 4 support for legacy tests")
+    }
+    implementation("com.jetbrains:ideaIC:2024.3") {
+        exclude(group = "org.jetbrains.kotlin", module = "kotlin-stdlib")
+        because("IntelliJ Platform test framework")
+    }
+    testImplementation("com.jetbrains.intellij.idea:ideaIC:2024.3") {
+        because("IntelliJ Platform test framework")
+    }
+    testImplementation("org.jetbrains.kotlin:kotlin-test-junit:1.9.21") {
+        because("Kotlin/JUnit integration")
+    }
+    testImplementation("org.junit.vintage:junit-vintage-engine:5.9.3") {
+        because("Bridge between JUnit 4 and JUnit Platform")
+    }
+    
+    // Resolve stdlib conflict
+    compileOnly(kotlin("stdlib-jdk8"))
 }
 
 tasks {
