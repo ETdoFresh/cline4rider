@@ -1,0 +1,23 @@
+<idea-plugin>
+    <id>com.example.myplugin</id>
+    <name>My Kotlin Plugin</name>
+    <vendor email="support@example.com" url="https://example.com">Your Name</vendor>
+    
+    <description><![CDATA[
+        A simple IntelliJ plugin written in Kotlin.
+    ]]></description>
+
+    <!-- Product and plugin dependencies -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>org.jetbrains.kotlin</depends>
+    
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Add your extensions here -->
+    </extensions>
+
+    <actions>
+        <action id="MyAction" class="com.example.myplugin.MyAction" text="Say Hello">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+        </action>
+    </actions>
+</idea-plugin>

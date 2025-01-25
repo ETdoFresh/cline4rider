@@ -12,6 +12,12 @@
 - Use clear, unambiguous language in all documentation
 - Maintain version-controlled documentation that evolves with the project
 - Conduct regular architecture reviews with all stakeholders
+- When examining a problem, provide a detailed description including:
+  * The exact error or issue observed
+  * Relevant context and environment details
+  * Steps to reproduce the issue
+  * Analysis of potential root causes
+  * Impact assessment of the problem
 
 ## Modularity and Scalability
 - Design systems with clear separation of concerns
