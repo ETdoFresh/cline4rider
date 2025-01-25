@@ -19,11 +19,13 @@ intellij {
     version = "2024.3"
     type = "IC"
     plugins = listOf("com.intellij.java", "com.intellij.modules.json")
+    downloadSources = true
+    updateSinceUntilBuild = true
+    instrumentCode = false // Temporarily disable instrumentation
 }
 
 dependencies {
-    implementation(kotlin("stdlib"))
-    implementation(kotlin("stdlib-jdk8"))
+    // Kotlin stdlib is automatically added by the Kotlin plugin
 }
 
 tasks {
@@ -39,5 +41,16 @@ tasks {
 
     withType<KotlinCompile> {
         kotlinOptions.jvmTarget = "17"
+    }
+
+    runIde {
+        autoReloadPlugins.set(true)
+        jvmArgs("-Xmx2048m")
+    }
+}
+
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(17))
     }
 }
